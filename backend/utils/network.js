@@ -73,10 +73,12 @@ export function isLocalRequest(req) {
         ip === '::1' ||
         ip === '::ffff:127.0.0.1' ||
         ip.startsWith('192.168.') ||
+        ip.startsWith('192.0.0.') ||  // Local USB/hotspot networks
         ip.startsWith('10.') ||
         ip.startsWith('172.16.') || ip.startsWith('172.17.') ||
         ip.startsWith('172.18.') || ip.startsWith('172.19.') ||
         ip.startsWith('172.2') || ip.startsWith('172.3') ||
         ip.startsWith('::ffff:192.168.') ||
+        ip.startsWith('::ffff:192.0.0.') ||
         ip.startsWith('::ffff:10.');
 }
