@@ -9,9 +9,50 @@
 ╚══════╝ ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═╝       ╚═════╝╚══════╝╚═╝
 ```
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org)
-[![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Android-lightgrey.svg)](https://expo.dev)
+<p align="center">
+  <a href="https://github.com/mithun50/luma-cli/actions/workflows/ci.yml">
+    <img src="https://github.com/mithun50/luma-cli/actions/workflows/ci.yml/badge.svg" alt="CI">
+  </a>
+  <a href="https://github.com/mithun50/luma-cli/actions/workflows/codeql.yml">
+    <img src="https://github.com/mithun50/luma-cli/actions/workflows/codeql.yml/badge.svg" alt="CodeQL">
+  </a>
+  <a href="https://github.com/mithun50/luma-cli/releases">
+    <img src="https://img.shields.io/github/v/release/mithun50/luma-cli?include_prereleases&style=flat" alt="Release">
+  </a>
+  <a href="https://www.gnu.org/licenses/gpl-3.0">
+    <img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://nodejs.org">
+    <img src="https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white" alt="Node.js">
+  </a>
+  <a href="https://expo.dev">
+    <img src="https://img.shields.io/badge/Expo-SDK%2053-000020?logo=expo&logoColor=white" alt="Expo">
+  </a>
+  <a href="https://reactnative.dev">
+    <img src="https://img.shields.io/badge/React%20Native-0.76-61DAFB?logo=react&logoColor=black" alt="React Native">
+  </a>
+  <a href="https://github.com/mithun50/luma-cli/stargazers">
+    <img src="https://img.shields.io/github/stars/mithun50/luma-cli?style=flat&logo=github" alt="Stars">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/mithun50/luma-cli/issues">
+    <img src="https://img.shields.io/github/issues/mithun50/luma-cli?style=flat" alt="Issues">
+  </a>
+  <a href="https://github.com/mithun50/luma-cli/pulls">
+    <img src="https://img.shields.io/github/issues-pr/mithun50/luma-cli?style=flat" alt="Pull Requests">
+  </a>
+  <a href="https://github.com/mithun50/luma-cli/commits/main">
+    <img src="https://img.shields.io/github/last-commit/mithun50/luma-cli?style=flat" alt="Last Commit">
+  </a>
+  <a href="https://github.com/mithun50/luma-cli">
+    <img src="https://img.shields.io/github/repo-size/mithun50/luma-cli?style=flat" alt="Repo Size">
+  </a>
+</p>
 
 > **Remote monitoring and control for Antigravity IDE** — Access your AI coding sessions from anywhere, get notified when responses are ready, and never miss a generation.
 
