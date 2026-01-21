@@ -20,7 +20,7 @@ export function createAuthMiddleware(options = {}) {
     const authToken = generateAuthToken(password);
 
     return (req, res, next) => {
-        const publicPaths = ['/login', '/login.html', '/favicon.ico'];
+        const publicPaths = ['/', '/login', '/health', '/favicon.ico'];
         if (publicPaths.includes(req.path) || req.path.startsWith('/css/')) {
             return next();
         }
@@ -51,7 +51,7 @@ export function createAuthMiddleware(options = {}) {
             req.path.startsWith('/snapshot') || req.path.startsWith('/send')) {
             res.status(401).json({ error: 'Unauthorized' });
         } else {
-            res.redirect('/login.html');
+            res.redirect('/login');
         }
     };
 }
