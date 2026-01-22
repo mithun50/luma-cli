@@ -99,6 +99,7 @@ Ever started a long AI generation and had to stare at your screen waiting? With 
 | Feature | Description |
 |:--------|:------------|
 | 📡 **Remote Access** | Connect via local WiFi or global ngrok tunnel |
+| 🔗 **Deep Links** | Open app instantly with `luma://` URLs |
 | 🔄 **Real-Time Sync** | Live updates with 1-second polling |
 | 💬 **Remote Control** | Send messages, stop generations, switch modes |
 | 🔔 **Smart Notifications** | Push alerts when AI finishes generating |
@@ -208,23 +209,38 @@ luma-cli start
 
 You'll see:
 ```
-╔═══════════════════════════════════════╗
-║           LUMA-CLI v1.0.0             ║
-╚═══════════════════════════════════════╝
+╔═══════════════════════════════════════════════════════════╗
+║                    LUMA-CLI v1.0.0                         ║
+╚═══════════════════════════════════════════════════════════╝
 
 ✔ Antigravity launched on debug port 9000
 🚀 Starting Luma server in LOCAL mode...
 ✅ Found Antigravity on port 9000
 ✅ Connected! Found 3 execution contexts
 
-📡 Connection Info:
-   URL: http://192.168.1.100:3000
+=======================================================
+   📡 LOCAL WIFI ACCESS
+=======================================================
+   🔗 URL:       http://192.168.1.100:3000
+   📱 Deep Link: luma://192.168.1.100:3000
+   🔑 Passcode:  Not required for local WiFi
+=======================================================
+
+📱 Scan this QR Code to connect:
 
 █████████████████████████████
 █ ▄▄▄▄▄ █ ▀▄▀▄█ ▄▄▄▄▄ █
 █ █   █ █▀▄ ▀██ █   █ █
 █ █▄▄▄█ █ ▄▀ ██ █▄▄▄█ █
 █████████████████████████████
+
+--------------------------------------------------
+   📝 Steps to Connect:
+   1. Ensure your phone is on the SAME Wi-Fi network
+   2. Scan the QR code with Luma app or Camera
+   3. The app will auto-connect using the deep link
+   ✨ Or tap the luma:// link to open directly!
+--------------------------------------------------
 
 ✅ Server is running
 ⌨️  Press Ctrl+C to stop
@@ -392,14 +408,28 @@ npx expo start
 
 | Mode | How to Connect |
 |:-----|:---------------|
-| **Local** | Scan QR code or enter `http://192.168.x.x:3000` |
-| **Web** | Scan QR code or enter ngrok URL |
+| **Local** | Scan QR code, tap deep link, or enter `http://192.168.x.x:3000` |
+| **Web** | Scan QR code, tap deep link, or enter ngrok URL |
+
+**Connection Methods:**
+
+| Method | Description |
+|:-------|:------------|
+| 📷 **QR Code** | Scan with Luma app or camera to auto-connect |
+| 🔗 **Deep Link** | Tap `luma://host:port` to open app directly |
+| ⌨️ **Manual** | Enter server URL in the app |
+
+**Deep Link Format:**
+```
+luma://192.168.1.100:3000     # Local network
+luma://abc123.ngrok.io        # ngrok tunnel (auto HTTPS)
+```
 
 **Connection Flow:**
 ```
-1. Open Luma app on phone
-2. Scan QR code OR enter server URL manually
-3. Connected! Start chatting with AI
+1. Start Luma server (shows QR code + deep link)
+2. Scan QR code OR tap deep link OR enter URL
+3. App auto-connects and you're ready!
 ```
 
 ### Screens
@@ -502,7 +532,8 @@ notifications.updateSettings({
 
 | Endpoint | Method | Description |
 |:---------|:-------|:------------|
-| `/health` | GET | Server health check |
+| `/health` | GET | Server health check (includes deep link) |
+| `/connection-info` | GET | Get URL and deep link for mobile |
 | `/snapshot` | GET | Get chat HTML snapshot |
 | `/send` | POST | Send message |
 | `/stop` | POST | Stop generation |
@@ -539,9 +570,29 @@ Response:
 ```json
 {
   "status": "ok",
-  "cdp": true,
-  "mode": "Fast",
-  "model": "Claude 3.5 Sonnet"
+  "cdpConnected": true,
+  "uptime": 123.45,
+  "timestamp": "2025-01-22T12:00:00.000Z",
+  "https": false,
+  "url": "http://192.168.1.100:3000",
+  "deepLink": "luma://192.168.1.100:3000"
+}
+```
+</details>
+
+<details>
+<summary>Connection Info</summary>
+
+```bash
+curl http://localhost:3000/connection-info
+```
+
+Response:
+```json
+{
+  "url": "http://192.168.1.100:3000",
+  "deepLink": "luma://192.168.1.100:3000",
+  "https": false
 }
 ```
 </details>
