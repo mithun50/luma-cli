@@ -5,6 +5,16 @@
 import { Router } from 'express';
 import { execSync } from 'child_process';
 import { getSSLConfig, PROJECT_ROOT } from '../config/index.js';
+import { getLocalIP } from '../utils/index.js';
+
+/**
+ * Convert HTTP URL to luma:// deep link
+ * @param {string} url - HTTP URL
+ * @returns {string} Deep link
+ */
+function toDeepLink(url) {
+    return url.replace(/^https?:\/\//, 'luma://');
+}
 
 /**
  * Create system router
@@ -20,6 +30,11 @@ export function createSystemRouter(options = {}) {
     // Root endpoint - Landing page
     router.get('/', (req, res) => {
         const connected = cdpManager?.isConnected() || false;
+        const protocol = hasSSL ? 'https' : 'http';
+        const host = req.get('host') || `${getLocalIP()}:${req.socket.localPort}`;
+        const url = `${protocol}://${host}`;
+        const deepLink = toDeepLink(url);
+
         res.send(`
 <!DOCTYPE html>
 <html lang="en">
@@ -41,6 +56,7 @@ export function createSystemRouter(options = {}) {
         .container {
             text-align: center;
             padding: 2rem;
+            max-width: 450px;
         }
         .logo {
             font-size: 3rem;
@@ -61,7 +77,7 @@ export function createSystemRouter(options = {}) {
             padding: 0.75rem 1.5rem;
             background: rgba(255,255,255,0.1);
             border-radius: 2rem;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
         .dot {
             width: 10px;
@@ -74,13 +90,34 @@ export function createSystemRouter(options = {}) {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
+        .open-app-btn {
+            display: inline-block;
+            background: linear-gradient(90deg, #8b5cf6, #6366f1);
+            color: #fff;
+            font-weight: 600;
+            padding: 1rem 2rem;
+            border-radius: 2rem;
+            text-decoration: none;
+            margin-bottom: 1.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .open-app-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+        }
+        .deep-link {
+            display: block;
+            color: #a78bfa;
+            font-family: monospace;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+            word-break: break-all;
+        }
         .endpoints {
             background: rgba(0,0,0,0.3);
             border-radius: 1rem;
             padding: 1.5rem;
             text-align: left;
-            max-width: 400px;
-            margin: 0 auto;
         }
         .endpoints h3 {
             margin-bottom: 1rem;
@@ -109,14 +146,16 @@ export function createSystemRouter(options = {}) {
             <span class="dot"></span>
             <span>${connected ? 'Connected to Antigravity' : 'Not Connected'}</span>
         </div>
+        <a href="${deepLink}" class="open-app-btn">📱 Open in Luma App</a>
+        <span class="deep-link">${deepLink}</span>
         <div class="endpoints">
             <h3>API Endpoints</h3>
             <div class="endpoint"><span class="method">GET</span><span class="path">/health</span></div>
             <div class="endpoint"><span class="method">GET</span><span class="path">/snapshot</span></div>
             <div class="endpoint"><span class="method">POST</span><span class="path">/send</span></div>
             <div class="endpoint"><span class="method">POST</span><span class="path">/stop</span></div>
-            <div class="endpoint"><span class="method">POST</span><span class="path">/login</span></div>
             <div class="endpoint"><span class="method">GET</span><span class="path">/app-state</span></div>
+            <div class="endpoint"><span class="method">GET</span><span class="path">/connection-info</span></div>
         </div>
     </div>
 </body>
@@ -126,11 +165,30 @@ export function createSystemRouter(options = {}) {
 
     // Health check endpoint
     router.get('/health', (req, res) => {
+        const protocol = hasSSL ? 'https' : 'http';
+        const host = req.get('host') || `${getLocalIP()}:${req.socket.localPort}`;
+        const url = `${protocol}://${host}`;
+
         res.json({
             status: 'ok',
             cdpConnected: cdpManager.isConnected(),
             uptime: process.uptime(),
             timestamp: new Date().toISOString(),
+            https: hasSSL,
+            url,
+            deepLink: toDeepLink(url)
+        });
+    });
+
+    // Connection info endpoint (for mobile app)
+    router.get('/connection-info', (req, res) => {
+        const protocol = hasSSL ? 'https' : 'http';
+        const host = req.get('host') || `${getLocalIP()}:${req.socket.localPort}`;
+        const url = `${protocol}://${host}`;
+
+        res.json({
+            url,
+            deepLink: toDeepLink(url),
             https: hasSSL
         });
     });

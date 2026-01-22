@@ -9,7 +9,7 @@ export { sslCommand } from './commands/ssl.js';
 export { infoCommand } from './commands/info.js';
 
 // Utilities
-export { displayQRCode, displayConnectionInfo, displayConnectionSteps } from './qrcode.js';
+export { displayQRCode, displayConnectionInfo, displayConnectionSteps, toDeepLink } from './qrcode.js';
 export { createTunnel, closeTunnel, getTunnelStatus } from './tunnel.js';
 export {
     promptMode,
