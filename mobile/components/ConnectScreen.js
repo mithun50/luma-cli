@@ -174,7 +174,7 @@ function PrimaryButton({ onPress, disabled, loading, children, icon }) {
   );
 }
 
-export function ConnectScreen({ onConnect, isConnecting, error }) {
+export function ConnectScreen({ onConnect, isConnecting, error, initialUrl }) {
   const [serverUrl, setServerUrl] = useState('');
   const [recentUrls, setRecentUrls] = useState([]);
   const [showScanner, setShowScanner] = useState(false);
@@ -190,6 +190,13 @@ export function ConnectScreen({ onConnect, isConnecting, error }) {
     ]).start();
     loadRecentUrls();
   }, []);
+
+  // Handle initial URL from deep link
+  useEffect(() => {
+    if (initialUrl) {
+      setServerUrl(initialUrl);
+    }
+  }, [initialUrl]);
 
   const loadRecentUrls = async () => {
     const saved = await storage.getServerUrl();

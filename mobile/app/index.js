@@ -1,5 +1,5 @@
 // Main App Screen - Luma Mobile
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Linking from 'expo-linking';
 import { colors } from '../constants/theme';
 import { api, storage } from '../services';
 import {
@@ -29,9 +30,36 @@ import {
   ChatList,
 } from '../components';
 
+// Parse luma:// deep link URL to extract server address
+// Formats: luma://192.168.1.100:3000 or luma://abc123.ngrok.io or luma://host:port
+const parseDeepLinkUrl = (url) => {
+  if (!url) return null;
+
+  try {
+    // Remove luma:// prefix
+    let serverPart = url.replace(/^luma:\/\//, '');
+
+    // Remove trailing slashes
+    serverPart = serverPart.replace(/\/+$/, '');
+
+    if (!serverPart) return null;
+
+    // Determine protocol (https for ngrok/external, http for local)
+    const isLocal = /^(localhost|127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)/.test(serverPart);
+    const protocol = isLocal ? 'http' : 'https';
+
+    return `${protocol}://${serverPart}`;
+  } catch (e) {
+    console.warn('Failed to parse deep link:', e);
+    return null;
+  }
+};
+
 export default function MainScreen() {
   const [showSettings, setShowSettings] = useState(false);
   const [showChatList, setShowChatList] = useState(false);
+  const [deepLinkUrl, setDeepLinkUrl] = useState(null);
+  const hasHandledInitialUrl = useRef(false);
 
   // Connection management
   const {
@@ -105,6 +133,51 @@ export default function MainScreen() {
     retry: retryChats,
     clearError: clearChatsError,
   } = useChats(isConnected);
+
+  // Handle deep links (luma://host:port)
+  useEffect(() => {
+    // Handle URL when app is opened from deep link
+    const handleDeepLink = (event) => {
+      const serverUrl = parseDeepLinkUrl(event.url);
+      if (serverUrl) {
+        console.log('[DeepLink] Received URL:', event.url, '-> Server:', serverUrl);
+        setDeepLinkUrl(serverUrl);
+      }
+    };
+
+    // Check for initial URL (app opened via link)
+    const checkInitialUrl = async () => {
+      if (hasHandledInitialUrl.current) return;
+      hasHandledInitialUrl.current = true;
+
+      const initialUrl = await Linking.getInitialURL();
+      if (initialUrl) {
+        const serverUrl = parseDeepLinkUrl(initialUrl);
+        if (serverUrl) {
+          console.log('[DeepLink] Initial URL:', initialUrl, '-> Server:', serverUrl);
+          setDeepLinkUrl(serverUrl);
+        }
+      }
+    };
+
+    checkInitialUrl();
+
+    // Listen for incoming links while app is running
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
+
+  // Auto-connect when deep link URL is set
+  useEffect(() => {
+    if (deepLinkUrl && !isConnected && !isConnecting) {
+      console.log('[DeepLink] Auto-connecting to:', deepLinkUrl);
+      handleConnect(deepLinkUrl);
+      setDeepLinkUrl(null);
+    }
+  }, [deepLinkUrl, isConnected, isConnecting]);
 
   // Refresh app state when connected
   useEffect(() => {
@@ -267,6 +340,7 @@ export default function MainScreen() {
           onConnect={handleConnect}
           isConnecting={isConnecting}
           error={connectionError}
+          initialUrl={deepLinkUrl}
         />
       </SafeAreaView>
     );

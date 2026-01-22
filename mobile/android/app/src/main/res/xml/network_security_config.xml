@@ -24,5 +24,9 @@
         <!-- 192.168.x.x -->
         <domain includeSubdomains="true">192.168.0.1</domain>
         <domain includeSubdomains="true">192.168.1.1</domain>
+
+        <!-- Ngrok tunnels (HTTP fallback, though usually HTTPS) -->
+        <domain includeSubdomains="true">ngrok.io</domain>
+        <domain includeSubdomains="true">ngrok-free.app</domain>
     </domain-config>
 </network-security-config>
