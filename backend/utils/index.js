@@ -7,3 +7,4 @@ export { killPortProcess, commandExists } from './process.js';
 export { hashString, generateAuthToken } from './hash.js';
 export { generatePasscode, generateRandomString } from './passcode.js';
 export { logger, setLogLevel } from './logger.js';
+export { launchAntigravity, isAntigravityRunning, waitForAntigravity } from './antigravity.js';

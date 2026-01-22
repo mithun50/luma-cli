@@ -29,6 +29,9 @@ export { getAppState } from './state.js';
 // Generation
 export { checkGenerationState } from './generation.js';
 
+// Workspace
+export { getWorkspaceInfo, openFolderDialog, openDirectory, listRecentWorkspaces } from './workspace.js';
+
 /**
  * CDP State Manager - Manages CDP connection and snapshot state
  */

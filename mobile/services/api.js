@@ -4,16 +4,11 @@ import { config } from '../constants/config';
 class LumaAPI {
   constructor() {
     this.baseUrl = null;
-    this.authToken = null;
   }
 
   setBaseUrl(url) {
     // Remove trailing slash
     this.baseUrl = url.replace(/\/$/, '');
-  }
-
-  setAuthToken(token) {
-    this.authToken = token;
   }
 
   async request(endpoint, options = {}) {
@@ -27,21 +22,13 @@ class LumaAPI {
       ...options.headers,
     };
 
-    if (this.authToken) {
-      headers['Cookie'] = `ag_auth_token=${this.authToken}`;
-    }
-
     try {
       const response = await fetch(url, {
         ...options,
         headers,
-        credentials: 'include',
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Unauthorized');
-        }
         throw new Error(`HTTP ${response.status}`);
       }
 
@@ -98,6 +85,31 @@ class LumaAPI {
     return this.request(config.endpoints.appState);
   }
 
+  // Get workspace info
+  async getWorkspace() {
+    return this.request(config.endpoints.workspace);
+  }
+
+  // Get recent workspaces
+  async getRecentWorkspaces() {
+    return this.request(config.endpoints.workspaceRecent);
+  }
+
+  // Open a specific directory
+  async openDirectory(directory) {
+    return this.request(config.endpoints.workspaceOpen, {
+      method: 'POST',
+      body: JSON.stringify({ directory }),
+    });
+  }
+
+  // Trigger open folder dialog
+  async openFolderDialog() {
+    return this.request(config.endpoints.workspaceOpenDialog, {
+      method: 'POST',
+    });
+  }
+
   // Remote click
   async remoteClick(selector, index = 0, textContent = '') {
     return this.request(config.endpoints.remoteClick, {
@@ -111,21 +123,6 @@ class LumaAPI {
     return this.request(config.endpoints.remoteScroll, {
       method: 'POST',
       body: JSON.stringify({ scrollPercent }),
-    });
-  }
-
-  // Login
-  async login(password) {
-    return this.request(config.endpoints.login, {
-      method: 'POST',
-      body: JSON.stringify({ password }),
-    });
-  }
-
-  // Logout
-  async logout() {
-    return this.request(config.endpoints.logout, {
-      method: 'POST',
     });
   }
 }

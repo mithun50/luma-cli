@@ -102,6 +102,8 @@ Ever started a long AI generation and had to stare at your screen waiting? With 
 | 🔄 **Real-Time Sync** | Live updates with 1-second polling |
 | 💬 **Remote Control** | Send messages, stop generations, switch modes |
 | 🔔 **Smart Notifications** | Push alerts when AI finishes generating |
+| 🚀 **Auto-Launch** | Start Antigravity with debug mode automatically |
+| 📂 **Workspace Management** | View and switch project directories remotely |
 | 🔒 **Secure** | HTTPS with auto-generated SSL certificates |
 | 📱 **Mobile App** | Native Expo app for iOS and Android |
 | 🎨 **Modern CLI** | Beautiful terminal UI with QR codes |
@@ -177,17 +179,32 @@ luma-cli --version
 
 ## 🚀 Quick Start
 
-### Step 1: Start Antigravity with Debug Mode
+### Option A: One Command (Recommended)
+
+```bash
+luma-cli start --auto-launch
+```
+
+This automatically:
+1. Launches Antigravity IDE with debug mode enabled
+2. Starts the Luma server
+3. Displays QR code for mobile connection
+
+### Option B: Manual Setup
+
+**Step 1:** Start Antigravity with Debug Mode
 
 ```bash
 antigravity . --remote-debugging-port=9000
 ```
 
-### Step 2: Launch Luma Server
+**Step 2:** Launch Luma Server
 
 ```bash
 luma-cli start
 ```
+
+---
 
 You'll see:
 ```
@@ -195,6 +212,7 @@ You'll see:
 ║           LUMA-CLI v1.0.0             ║
 ╚═══════════════════════════════════════╝
 
+✔ Antigravity launched on debug port 9000
 🚀 Starting Luma server in LOCAL mode...
 ✅ Found Antigravity on port 9000
 ✅ Connected! Found 3 execution contexts
@@ -230,6 +248,12 @@ Scan QR code with Expo Go app → Enter server URL → Start chatting!
 Start the Luma server.
 
 ```bash
+# Auto-launch Antigravity + start server (recommended)
+luma-cli start --auto-launch
+
+# Auto-launch with specific project directory
+luma-cli start --auto-launch --directory ~/my-project
+
 # Interactive mode (choose local/web)
 luma-cli start
 
@@ -241,13 +265,46 @@ luma-cli start --web
 
 # Custom port
 luma-cli start --port 8080
+
+# Combined: auto-launch + web mode + custom port
+luma-cli start -a -w -p 8080
 ```
 
 | Option | Short | Description |
 |:-------|:------|:------------|
+| `--auto-launch` | `-a` | Auto-launch Antigravity IDE with debug mode |
+| `--directory <dir>` | `-d` | Directory to open in Antigravity (default: `.`) |
 | `--local` | `-l` | LAN/WiFi mode (default) |
 | `--web` | `-w` | ngrok tunnel for global access |
 | `--port <number>` | `-p` | Custom port (default: 3000) |
+
+#### ngrok Setup (for `--web` mode)
+
+To use global access mode, you need a free ngrok auth token:
+
+1. **Get token:** https://dashboard.ngrok.com/get-started/your-authtoken
+
+2. **Configure:**
+   ```bash
+   luma-cli config set ngrok-token YOUR_NGROK_TOKEN
+   ```
+
+3. **Start with web mode:**
+   ```bash
+   luma-cli start --web
+   ```
+
+> **Note:** Without an auth token, tunnels expire after ~2 hours. With a token, they persist longer.
+
+#### Local vs Web Mode Comparison
+
+| Feature | Local (`-l`) | Web (`-w`) |
+|:--------|:-------------|:-----------|
+| **Access** | Same WiFi/LAN only | Anywhere via internet |
+| **ngrok Token** | Not required | Required |
+| **Setup** | None | ngrok account (free) |
+| **Speed** | Faster (direct) | Slightly slower (tunneled) |
+| **Use Case** | Home/office use | Remote access, sharing |
 
 ---
 
@@ -315,6 +372,7 @@ luma-cli info
 Shows:
 - Local URL with QR code
 - ngrok tunnel URL (if active)
+- **Passcode** (for web mode connections)
 - Server configuration
 - Quick tips
 
@@ -330,13 +388,27 @@ npm install
 npx expo start
 ```
 
+### Connecting to Server
+
+| Mode | How to Connect |
+|:-----|:---------------|
+| **Local** | Scan QR code or enter `http://192.168.x.x:3000` |
+| **Web** | Scan QR code or enter ngrok URL |
+
+**Connection Flow:**
+```
+1. Open Luma app on phone
+2. Scan QR code OR enter server URL manually
+3. Connected! Start chatting with AI
+```
+
 ### Screens
 
 | Screen | Description |
 |:-------|:------------|
 | **Connect** | Enter server URL or scan QR code |
 | **Chat** | View live chat snapshot from Antigravity |
-| **Settings** | Change mode/model, disconnect |
+| **Settings** | Change mode/model, workspace, disconnect |
 
 ### Controls
 
@@ -346,6 +418,7 @@ npx expo start
 | **Stop Button** | Stop current generation |
 | **Mode Toggle** | Switch Fast/Planning mode |
 | **Model Selector** | Change AI model |
+| **Workspace** | View/switch project directory |
 
 ---
 
@@ -427,19 +500,21 @@ notifications.updateSettings({
 
 ### Endpoints
 
-| Endpoint | Method | Auth | Description |
-|:---------|:-------|:-----|:------------|
-| `/health` | GET | No | Server health check |
-| `/snapshot` | GET | Yes | Get chat HTML snapshot |
-| `/send` | POST | Yes | Send message |
-| `/stop` | POST | Yes | Stop generation |
-| `/set-mode` | POST | Yes | Set Fast/Planning mode |
-| `/set-model` | POST | Yes | Set AI model |
-| `/app-state` | GET | Yes | Get current mode/model |
-| `/remote-click` | POST | Yes | Click element |
-| `/remote-scroll` | POST | Yes | Sync scroll |
-| `/login` | POST | No | Authenticate |
-| `/logout` | POST | Yes | Clear session |
+| Endpoint | Method | Description |
+|:---------|:-------|:------------|
+| `/health` | GET | Server health check |
+| `/snapshot` | GET | Get chat HTML snapshot |
+| `/send` | POST | Send message |
+| `/stop` | POST | Stop generation |
+| `/set-mode` | POST | Set Fast/Planning mode |
+| `/set-model` | POST | Set AI model |
+| `/app-state` | GET | Get current mode/model |
+| `/workspace` | GET | Get current workspace info |
+| `/workspace/recent` | GET | List recent workspaces |
+| `/workspace/open` | POST | Open specific directory |
+| `/workspace/open-dialog` | POST | Trigger open folder dialog |
+| `/remote-click` | POST | Click element |
+| `/remote-scroll` | POST | Sync scroll |
 
 ### WebSocket Events
 
@@ -477,9 +552,7 @@ Response:
 ```bash
 curl -X POST http://localhost:3000/send \
   -H "Content-Type: application/json" \
-  -d '{"message": "Hello, AI!"}' \
-  --cookie "ag_auth_token=..."
-```
+  -d '{"message": "Hello, AI!"}'```
 
 Response:
 ```json
@@ -494,9 +567,7 @@ Response:
 <summary>Get Snapshot</summary>
 
 ```bash
-curl http://localhost:3000/snapshot \
-  --cookie "ag_auth_token=..."
-```
+curl http://localhost:3000/snapshot```
 
 Response:
 ```json
@@ -512,6 +583,54 @@ Response:
 ```
 </details>
 
+<details>
+<summary>Get Workspace Info</summary>
+
+```bash
+curl http://localhost:3000/workspace```
+
+Response:
+```json
+{
+  "directory": "/home/user/my-project",
+  "projectName": "my-project",
+  "files": []
+}
+```
+</details>
+
+<details>
+<summary>List Recent Workspaces</summary>
+
+```bash
+curl http://localhost:3000/workspace/recent```
+
+Response:
+```json
+{
+  "workspaces": [
+    { "path": "/home/user/project-a", "name": "project-a" },
+    { "path": "/home/user/project-b", "name": "project-b" }
+  ]
+}
+```
+</details>
+
+<details>
+<summary>Open Folder Dialog</summary>
+
+```bash
+curl -X POST http://localhost:3000/workspace/open-dialog```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Open folder dialog triggered"
+}
+```
+</details>
+
 ---
 
 ## ⚙️ Configuration
@@ -523,13 +642,11 @@ Create `.env` in project root:
 ```env
 # Server
 PORT=3000
-APP_PASSWORD=your_secure_password
 
 # ngrok (for web mode)
 NGROK_AUTHTOKEN=your_ngrok_token
 
 # Advanced (optional)
-# COOKIE_SECRET=custom_secret
 # CDP_CALL_TIMEOUT=30000
 # POLL_INTERVAL=1000
 ```
@@ -539,10 +656,8 @@ NGROK_AUTHTOKEN=your_ngrok_token
 | Setting | Default | Description |
 |:--------|:--------|:------------|
 | `PORT` | 3000 | Server port |
-| `APP_PASSWORD` | antigravity | Auth password |
 | `CDP_PORTS` | 9000-9003 | Debug ports to scan |
 | `POLL_INTERVAL` | 1000ms | Snapshot polling |
-| `COOKIE_MAX_AGE` | 30 days | Session lifetime |
 
 ---
 
@@ -553,17 +668,22 @@ NGROK_AUTHTOKEN=your_ngrok_token
 <details>
 <summary>"Cannot connect to Antigravity"</summary>
 
-1. Ensure debug mode is enabled:
+1. Use auto-launch (recommended):
+   ```bash
+   luma-cli start --auto-launch
+   ```
+
+2. Or manually enable debug mode:
    ```bash
    antigravity . --remote-debugging-port=9000
    ```
 
-2. Check ports are accessible:
+3. Check ports are accessible:
    ```bash
    curl http://localhost:9000/json
    ```
 
-3. Verify health endpoint:
+4. Verify health endpoint:
    ```bash
    curl http://localhost:3000/health
    ```
@@ -572,16 +692,30 @@ NGROK_AUTHTOKEN=your_ngrok_token
 <details>
 <summary>"ngrok tunnel failed"</summary>
 
-1. Verify token is set:
+1. **Get a token** (if you don't have one):
+   - Sign up at https://dashboard.ngrok.com
+   - Copy your authtoken from the dashboard
+
+2. **Set the token:**
+   ```bash
+   luma-cli config set ngrok-token YOUR_TOKEN
+   ```
+
+3. **Verify token is set:**
    ```bash
    luma-cli config show
    ```
 
-2. Check internet connection
+4. **Check internet connection**
 
-3. Reset token:
+5. **Common errors:**
+   - `ERR_NGROK_...` → Invalid or expired token
+   - `tunnel session not found` → Token not set
+   - `too many connections` → Free tier limit (use local mode instead)
+
+6. **Alternative: Use local mode** (no ngrok needed):
    ```bash
-   luma-cli config set ngrok-token NEW_TOKEN
+   luma-cli start --local
    ```
 </details>
 
@@ -630,7 +764,8 @@ luma-cli/
 │   │   ├── messaging.js      # Send/stop
 │   │   ├── settings.js       # Mode/model
 │   │   ├── snapshot.js       # DOM capture
-│   │   └── state.js          # App state
+│   │   ├── state.js          # App state
+│   │   └── workspace.js      # Directory switching ⭐
 │   │
 │   ├── cli/                  # CLI commands
 │   │   ├── commands/
@@ -653,6 +788,7 @@ luma-cli/
 │   │   ├── chat.js
 │   │   ├── settings.js
 │   │   ├── interactions.js
+│   │   ├── workspace.js      # Directory management ⭐
 │   │   └── system.js
 │   │
 │   ├── middleware/
@@ -668,7 +804,8 @@ luma-cli/
 │   │   ├── process.js
 │   │   ├── hash.js
 │   │   ├── passcode.js
-│   │   └── logger.js
+│   │   ├── logger.js
+│   │   └── antigravity.js    # Auto-launch utility ⭐
 │   │
 │   └── config/
 │       ├── defaults.js
@@ -690,7 +827,8 @@ luma-cli/
 │   │   ├── useConnection.js
 │   │   ├── useSnapshot.js
 │   │   ├── useAppState.js
-│   │   └── useNotifications.js  ⭐
+│   │   ├── useNotifications.js  ⭐
+│   │   └── useWorkspace.js      ⭐
 │   │
 │   ├── services/
 │   │   ├── api.js

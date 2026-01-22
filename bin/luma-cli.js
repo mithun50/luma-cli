@@ -34,6 +34,8 @@ program
     .option('-l, --local', 'Start in local/LAN mode (default)')
     .option('-w, --web', 'Start in web/ngrok tunnel mode')
     .option('-p, --port <port>', 'Server port', '3000')
+    .option('-a, --auto-launch', 'Auto-launch Antigravity IDE with debug mode')
+    .option('-d, --directory <dir>', 'Directory to open in Antigravity (default: .)', '.')
     .action(startCommand);
 
 // Config command

@@ -12,10 +12,12 @@ export const config = {
     setMode: '/set-mode',
     setModel: '/set-model',
     appState: '/app-state',
+    workspace: '/workspace',
+    workspaceRecent: '/workspace/recent',
+    workspaceOpen: '/workspace/open',
+    workspaceOpenDialog: '/workspace/open-dialog',
     remoteClick: '/remote-click',
     remoteScroll: '/remote-scroll',
-    login: '/login',
-    logout: '/logout',
   },
 
   // Polling intervals (ms)
@@ -35,7 +37,6 @@ export const config = {
   // Storage keys
   storageKeys: {
     serverUrl: 'luma_server_url',
-    authToken: 'luma_auth_token',
     preferences: 'luma_preferences',
   },
 };

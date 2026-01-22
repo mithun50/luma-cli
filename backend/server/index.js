@@ -16,7 +16,6 @@ import { startPolling, initCDP } from './polling.js';
  * Create and start the Luma server
  * @param {Object} options - Server options
  * @param {number} options.port - Server port
- * @param {string} options.password - App password
  * @returns {Promise<Object>} Server instance and related objects
  */
 export async function createServer(options = {}) {
@@ -24,14 +23,13 @@ export async function createServer(options = {}) {
     const sslConfig = getSSLConfig();
 
     const port = options.port || serverConfig.port;
-    const password = options.password || serverConfig.password;
     const hasSSL = sslConfig.hasSSL;
 
     // Create CDP manager
     const cdpManager = new CDPManager();
 
     // Create Express app
-    const app = createExpressApp({ cdpManager, password, hasSSL });
+    const app = createExpressApp({ cdpManager, hasSSL });
 
     // Create HTTP/HTTPS server
     let server;
@@ -46,7 +44,7 @@ export async function createServer(options = {}) {
     }
 
     // Create WebSocket server
-    const wss = createWebSocketServer(server, { password });
+    const wss = createWebSocketServer(server);
 
     return {
         server,
@@ -54,8 +52,7 @@ export async function createServer(options = {}) {
         app,
         cdpManager,
         hasSSL,
-        port,
-        password
+        port
     };
 }
 

@@ -6,7 +6,8 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { startServer } from '../../server/index.js';
 import { getServerConfig, getSSLConfig, getNgrokConfig } from '../../config/index.js';
-import { generatePasscode, getLocalIP, logger } from '../../utils/index.js';
+import { getLocalIP, logger } from '../../utils/index.js';
+import { launchAntigravity, isAntigravityRunning } from '../../utils/antigravity.js';
 import { displayQRCode, displayConnectionInfo, displayConnectionSteps } from '../qrcode.js';
 import { createTunnel, closeTunnel } from '../tunnel.js';
 import { promptMode } from '../prompts.js';
@@ -19,6 +20,30 @@ export async function startCommand(options = {}) {
     // Display banner
     logger.banner();
 
+    // Auto-launch Antigravity if requested
+    let antigravityProcess = null;
+    if (options.autoLaunch) {
+        const spinner = ora('Checking for Antigravity IDE...').start();
+
+        try {
+            if (await isAntigravityRunning()) {
+                spinner.succeed('Antigravity already running with debug mode');
+            } else {
+                spinner.text = 'Launching Antigravity IDE with debug mode...';
+                const result = await launchAntigravity({
+                    directory: options.directory || '.',
+                    debugPort: 9000,
+                    timeout: 30000
+                });
+                antigravityProcess = result.process;
+                spinner.succeed(`Antigravity launched on debug port ${result.port}`);
+            }
+        } catch (err) {
+            spinner.fail(`Failed to launch Antigravity: ${err.message}`);
+            console.log(chalk.yellow('💡 Start Antigravity manually: antigravity . --remote-debugging-port=9000'));
+        }
+    }
+
     // Determine mode
     let mode = 'local';
     if (options.web) {
@@ -29,25 +54,16 @@ export async function startCommand(options = {}) {
     }
 
     const serverConfig = getServerConfig();
-    const sslConfig = getSSLConfig();
     const ngrokConfig = getNgrokConfig();
 
     const port = parseInt(options.port, 10) || serverConfig.port;
-    let password = serverConfig.password;
-
-    // Generate passcode for web mode if no password set
-    if (mode === 'web' && password === 'antigravity') {
-        password = generatePasscode();
-        process.env.APP_PASSWORD = password;
-        console.log(chalk.yellow(`\u26a0\ufe0f  Using temporary passcode: ${chalk.bold(password)}`));
-    }
 
     console.log(chalk.cyan(`\n\ud83d\ude80 Starting Luma server in ${mode.toUpperCase()} mode...`));
 
     try {
         // Start the server
-        const serverInstance = await startServer({ port, password });
-        const { url, hasSSL, localIP } = serverInstance;
+        const serverInstance = await startServer({ port });
+        const { url, hasSSL } = serverInstance;
 
         let finalUrl = url;
         let tunnelUrl = null;
@@ -60,7 +76,7 @@ export async function startCommand(options = {}) {
                     authToken: ngrokConfig.authToken,
                     https: hasSSL
                 });
-                finalUrl = `${tunnelUrl}?key=${password}`;
+                finalUrl = tunnelUrl;
             } catch (error) {
                 console.log(chalk.red(`\u274c Failed to create tunnel: ${error.message}`));
                 console.log(chalk.yellow('Falling back to local mode...'));
@@ -72,9 +88,7 @@ export async function startCommand(options = {}) {
         // Display connection info
         displayConnectionInfo({
             mode,
-            url: mode === 'web' ? tunnelUrl : url,
-            passcode: mode === 'web' ? password : null,
-            localAuth: mode === 'local'
+            url: mode === 'web' ? tunnelUrl : url
         });
 
         // Display QR code
@@ -91,6 +105,11 @@ export async function startCommand(options = {}) {
             console.log(chalk.yellow('\n\n\ud83d\udc4b Shutting down...'));
             if (mode === 'web') {
                 await closeTunnel();
+            }
+            // Kill Antigravity if we launched it
+            if (antigravityProcess && !antigravityProcess.killed) {
+                console.log(chalk.gray('   Stopping Antigravity...'));
+                antigravityProcess.kill();
             }
         };
 
