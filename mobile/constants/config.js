@@ -12,40 +12,61 @@ export const config = {
     setMode: '/set-mode',
     setModel: '/set-model',
     appState: '/app-state',
+    // Workspace endpoints
     workspace: '/workspace',
     workspaceRecent: '/workspace/recent',
     workspaceOpen: '/workspace/open',
     workspaceOpenDialog: '/workspace/open-dialog',
+    workspaceClose: '/workspace/close',
+    // Multichat endpoints
+    chats: '/chats',
+    chatCreate: '/chat/create',
+    chatSwitch: '/chat/switch',
+    chatDelete: '/chat/delete',
+    chatRename: '/chat/rename',
+    // Remote control
     remoteClick: '/remote-click',
     remoteScroll: '/remote-scroll',
   },
 
   // Polling intervals (ms)
-  pollInterval: 1000,
+  pollInterval: 2000,
   healthCheckInterval: 5000,
 
-  // WebSocket reconnect settings
+  // WebSocket settings
   wsReconnectDelay: 1000,
   wsMaxReconnectDelay: 30000,
-  wsMaxRetries: 10,
+  wsMaxRetries: 15,              // Increased retries
+  wsHeartbeatInterval: 25000,    // Send ping every 25 seconds
+  wsHeartbeatTimeout: 10000,     // Wait 10 seconds for pong
+  wsConnectionTimeout: 10000,    // 10 second connection timeout
 
   // API request settings
-  requestTimeout: 15000,        // 15 second timeout per request
-  maxRetries: 3,                // 3 retry attempts
-  retryBaseDelay: 1000,         // 1 second base delay
-  retryMaxDelay: 30000,         // Max 30 seconds between retries
+  requestTimeout: 20000,         // 20 second timeout per request
+  maxRetries: 3,                 // 3 retry attempts
+  retryBaseDelay: 1000,          // 1 second base delay
+  retryMaxDelay: 30000,          // Max 30 seconds between retries
   retryableStatuses: [408, 429, 500, 502, 503, 504],
 
   // Available modes
   modes: ['Fast', 'Planning'],
 
-  // Known models
-  models: ['Gemini 2.0 Flash', 'Claude 3.5 Sonnet', 'GPT-4o'],
+  // Known models (current valid models)
+  models: [
+    'Gemini 3 Pro (high)',
+    'Gemini 3 Pro (low)',
+    'Gemini 3 Flash',
+    'Claude Sonnet 4.5',
+    'Claude Sonnet 4.5 (thinking)',
+    'Claude Opus 4.5 (thinking)',
+    'GPT-o3',
+  ],
 
   // Storage keys
   storageKeys: {
     serverUrl: 'luma_server_url',
     preferences: 'luma_preferences',
+    connectionHistory: 'luma_connection_history',
   },
 };
 

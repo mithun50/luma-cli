@@ -3,6 +3,7 @@
  */
 
 import { createChatRouter } from './chat.js';
+import { createChatsRouter } from './chats.js';
 import { createSettingsRouter } from './settings.js';
 import { createInteractionsRouter } from './interactions.js';
 import { createSystemRouter } from './system.js';
@@ -18,8 +19,11 @@ import { createWorkspaceRouter } from './workspace.js';
 export function registerRoutes(app, options = {}) {
     const { cdpManager, hasSSL } = options;
 
-    // Chat routes
+    // Chat routes (snapshot, send, stop)
     app.use(createChatRouter({ cdpManager }));
+
+    // Chats routes (multi-chat management)
+    app.use(createChatsRouter({ cdpManager }));
 
     // Settings routes
     app.use(createSettingsRouter({ cdpManager }));
@@ -36,6 +40,7 @@ export function registerRoutes(app, options = {}) {
 
 export {
     createChatRouter,
+    createChatsRouter,
     createSettingsRouter,
     createInteractionsRouter,
     createSystemRouter,

@@ -1,30 +1,73 @@
-// Error Display Component
-import React from 'react';
+// Error Display Component - Modern Design
+import React, { useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
+  Animated,
 } from 'react-native';
-import { colors, spacing, borderRadius, fontSize, fontWeight } from '../constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import {
+  colors,
+  spacing,
+  borderRadius,
+  fontSize,
+  fontWeight,
+} from '../constants/theme';
 import { AppError, ErrorCategory } from '../utils';
 
 // Get icon for error category
-function getErrorIcon(category) {
+function getErrorConfig(category) {
   switch (category) {
     case ErrorCategory.NETWORK:
-      return '!';
+      return { icon: 'cloud-offline-outline', color: colors.error };
     case ErrorCategory.TIMEOUT:
-      return '!';
+      return { icon: 'time-outline', color: colors.warning };
     case ErrorCategory.SERVER:
-      return '!';
+      return { icon: 'server-outline', color: colors.error };
     case ErrorCategory.WEBSOCKET:
-      return '!';
+      return { icon: 'pulse-outline', color: colors.error };
     case ErrorCategory.STORAGE:
-      return '!';
+      return { icon: 'save-outline', color: colors.warning };
     default:
-      return '!';
+      return { icon: 'alert-circle-outline', color: colors.error };
   }
+}
+
+// Animated retry button
+function RetryButton({ onPress, label = 'Try Again' }) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, { toValue: 0.95, useNativeDriver: true }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={1}
+    >
+      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          style={styles.retryButton}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <Ionicons name="refresh-outline" size={18} color={colors.white} />
+          <Text style={styles.retryText}>{label}</Text>
+        </LinearGradient>
+      </Animated.View>
+    </TouchableOpacity>
+  );
 }
 
 export function ErrorDisplay({
@@ -46,7 +89,7 @@ export function ErrorDisplay({
         category: ErrorCategory.UNKNOWN,
       };
 
-  const icon = getErrorIcon(displayInfo.category);
+  const errorConfig = getErrorConfig(displayInfo.category);
   const canRetry = displayInfo.retryable && onRetry;
 
   // Compact mode: inline banner
@@ -54,8 +97,8 @@ export function ErrorDisplay({
     return (
       <View style={[styles.compactContainer, style]}>
         <View style={styles.compactContent}>
-          <View style={styles.compactIcon}>
-            <Text style={styles.compactIconText}>{icon}</Text>
+          <View style={[styles.compactIcon, { backgroundColor: errorConfig.color + '20' }]}>
+            <Ionicons name={errorConfig.icon} size={16} color={errorConfig.color} />
           </View>
           <Text style={styles.compactMessage} numberOfLines={1}>
             {displayInfo.message}
@@ -69,7 +112,7 @@ export function ErrorDisplay({
           )}
           {onDismiss && (
             <TouchableOpacity onPress={onDismiss} style={styles.compactDismissButton}>
-              <Text style={styles.compactDismissText}>X</Text>
+              <Ionicons name="close" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -77,25 +120,33 @@ export function ErrorDisplay({
     );
   }
 
-  // Full mode: centered card
+  // Full mode: centered card with glass effect
   return (
     <View style={[styles.fullContainer, style]}>
       <View style={styles.fullCard}>
-        <View style={styles.fullIcon}>
-          <Text style={styles.fullIconText}>{icon}</Text>
+        {/* Icon with glow effect */}
+        <View style={styles.iconWrapper}>
+          <View style={[styles.iconGlow, { backgroundColor: errorConfig.color + '15' }]} />
+          <View style={[styles.fullIcon, { backgroundColor: errorConfig.color + '20' }]}>
+            <Ionicons name={errorConfig.icon} size={32} color={errorConfig.color} />
+          </View>
         </View>
+
+        {/* Title & Message */}
         <Text style={styles.fullTitle}>{displayInfo.title}</Text>
         <Text style={styles.fullMessage}>{displayInfo.message}</Text>
-        {canRetry && (
-          <TouchableOpacity onPress={onRetry} style={styles.fullRetryButton}>
-            <Text style={styles.fullRetryText}>Try Again</Text>
-          </TouchableOpacity>
-        )}
-        {onDismiss && !canRetry && (
-          <TouchableOpacity onPress={onDismiss} style={styles.fullDismissButton}>
-            <Text style={styles.fullDismissText}>Dismiss</Text>
-          </TouchableOpacity>
-        )}
+
+        {/* Actions */}
+        <View style={styles.actionsContainer}>
+          {canRetry && (
+            <RetryButton onPress={onRetry} label="Try Again" />
+          )}
+          {onDismiss && (
+            <TouchableOpacity onPress={onDismiss} style={styles.dismissButton}>
+              <Text style={styles.dismissText}>Dismiss</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -107,14 +158,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.error + '20',
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
     borderLeftWidth: 3,
     borderLeftColor: colors.error,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     marginHorizontal: spacing.md,
     marginVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.lg,
   },
   compactContent: {
     flex: 1,
@@ -122,18 +175,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   compactIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.error,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.sm,
-  },
-  compactIconText: {
-    color: colors.text,
-    fontSize: 12,
-    fontWeight: fontWeight.bold,
   },
   compactMessage: {
     flex: 1,
@@ -144,10 +191,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginLeft: spacing.sm,
+    gap: spacing.xs,
   },
   compactRetryButton: {
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
+    backgroundColor: colors.primaryMuted,
+    borderRadius: borderRadius.md,
   },
   compactRetryText: {
     color: colors.primary,
@@ -155,14 +205,12 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.medium,
   },
   compactDismissButton: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
-    marginLeft: spacing.xs,
-  },
-  compactDismissText: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.glass,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // Full mode styles
@@ -174,31 +222,38 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   fullCard: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    borderRadius: borderRadius.xxl,
     padding: spacing.xl,
     alignItems: 'center',
-    maxWidth: 300,
+    maxWidth: 320,
     width: '100%',
   },
+  iconWrapper: {
+    position: 'relative',
+    marginBottom: spacing.lg,
+  },
+  iconGlow: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    top: -14,
+    left: -14,
+  },
   fullIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.error + '20',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  fullIconText: {
-    color: colors.error,
-    fontSize: 24,
-    fontWeight: fontWeight.bold,
   },
   fullTitle: {
     color: colors.text,
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
     marginBottom: spacing.sm,
     textAlign: 'center',
   },
@@ -207,31 +262,34 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     textAlign: 'center',
     marginBottom: spacing.lg,
-    lineHeight: 22,
+    lineHeight: fontSize.md * 1.5,
   },
-  fullRetryButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.sm,
+  actionsContainer: {
+    width: '100%',
+    gap: spacing.sm,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    borderRadius: borderRadius.md,
-    minWidth: 120,
+    borderRadius: borderRadius.xl,
+    gap: spacing.sm,
   },
-  fullRetryText: {
-    color: colors.text,
+  retryText: {
+    color: colors.white,
     fontSize: fontSize.md,
-    fontWeight: fontWeight.medium,
-    textAlign: 'center',
+    fontWeight: fontWeight.semibold,
   },
-  fullDismissButton: {
+  dismissButton: {
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xl,
-    borderRadius: borderRadius.md,
+    alignItems: 'center',
   },
-  fullDismissText: {
+  dismissText: {
     color: colors.textSecondary,
     fontSize: fontSize.md,
     fontWeight: fontWeight.medium,
-    textAlign: 'center',
   },
 });
 

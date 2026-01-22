@@ -1,6 +1,6 @@
-// Connection Hook
+// Connection Hook - With Quality Tracking
 import { useState, useEffect, useCallback } from 'react';
-import { api, websocket, storage } from '../services';
+import { api, websocket, storage, ConnectionState, ConnectionQuality } from '../services';
 import { AppError, wrapError } from '../utils';
 
 export function useConnection() {
@@ -10,6 +10,10 @@ export function useConnection() {
   const [reconnectInfo, setReconnectInfo] = useState(null);
   const [serverUrl, setServerUrlState] = useState(null);
   const [error, setError] = useState(null);
+
+  // Connection quality tracking
+  const [connectionQuality, setConnectionQuality] = useState(ConnectionQuality.UNKNOWN);
+  const [latency, setLatency] = useState(null);
 
   // Load saved server URL on mount
   useEffect(() => {
@@ -65,6 +69,8 @@ export function useConnection() {
     setIsReconnecting(false);
     setReconnectInfo(null);
     setError(null);
+    setConnectionQuality(ConnectionQuality.UNKNOWN);
+    setLatency(null);
   }, []);
 
   // Manual retry connection
@@ -85,15 +91,20 @@ export function useConnection() {
 
   // Handle WebSocket events
   useEffect(() => {
-    const handleConnected = () => {
+    const handleConnected = (data) => {
       setIsConnected(true);
       setIsReconnecting(false);
       setReconnectInfo(null);
       setError(null);
     };
 
-    const handleDisconnected = () => {
-      setIsConnected(false);
+    const handleDisconnected = (data) => {
+      // Only set disconnected if we're not reconnecting
+      if (websocket.getState() !== ConnectionState.RECONNECTING) {
+        setIsConnected(false);
+      }
+      setConnectionQuality(ConnectionQuality.UNKNOWN);
+      setLatency(null);
     };
 
     const handleReconnecting = (info) => {
@@ -109,8 +120,27 @@ export function useConnection() {
     const handleMaxRetries = (data) => {
       setIsReconnecting(false);
       setReconnectInfo(null);
+      setIsConnected(false);
       if (data?.error) {
         setError(data.error);
+      }
+    };
+
+    const handleQualityChange = ({ quality, latency: lat }) => {
+      setConnectionQuality(quality);
+      setLatency(lat);
+    };
+
+    const handleStateChange = ({ oldState, newState }) => {
+      // Update connected state based on WebSocket state
+      if (newState === ConnectionState.CONNECTED) {
+        setIsConnected(true);
+        setIsReconnecting(false);
+      } else if (newState === ConnectionState.RECONNECTING) {
+        setIsReconnecting(true);
+      } else if (newState === ConnectionState.FAILED) {
+        setIsConnected(false);
+        setIsReconnecting(false);
       }
     };
 
@@ -119,6 +149,8 @@ export function useConnection() {
     websocket.on('reconnecting', handleReconnecting);
     websocket.on('error', handleError);
     websocket.on('max_retries', handleMaxRetries);
+    websocket.on('quality_change', handleQualityChange);
+    websocket.on('state_change', handleStateChange);
 
     return () => {
       websocket.off('connected', handleConnected);
@@ -126,6 +158,8 @@ export function useConnection() {
       websocket.off('reconnecting', handleReconnecting);
       websocket.off('error', handleError);
       websocket.off('max_retries', handleMaxRetries);
+      websocket.off('quality_change', handleQualityChange);
+      websocket.off('state_change', handleStateChange);
     };
   }, []);
 
@@ -136,6 +170,8 @@ export function useConnection() {
     reconnectInfo,
     serverUrl,
     error,
+    connectionQuality,
+    latency,
     connect,
     disconnect,
     retry,

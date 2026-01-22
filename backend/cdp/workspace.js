@@ -225,6 +225,74 @@ export async function openDirectory(cdp, directory) {
  * @param {Object} cdp - CDP connection object
  * @returns {Promise<Object>} List of recent workspaces
  */
+/**
+ * Close the current workspace/folder
+ * @param {Object} cdp - CDP connection object
+ * @returns {Promise<Object>} Result of closing workspace
+ */
+export async function closeWorkspace(cdp) {
+    const EXP = `(async () => {
+        try {
+            // Strategy 1: Look for "Close Folder" or "Close Workspace" menu item
+            const closeBtn = Array.from(document.querySelectorAll('button, [role="menuitem"], [class*="menu-item"]'))
+                .find(el => {
+                    const text = el.textContent?.toLowerCase() || '';
+                    return text.includes('close folder') ||
+                           text.includes('close workspace') ||
+                           text.includes('close project');
+                });
+
+            if (closeBtn) {
+                closeBtn.click();
+                return { success: true, method: 'button_click', message: 'Workspace closed' };
+            }
+
+            // Strategy 2: Keyboard shortcut Ctrl+K F (VS Code style)
+            const ctrlK = new KeyboardEvent('keydown', {
+                key: 'k',
+                code: 'KeyK',
+                keyCode: 75,
+                ctrlKey: true,
+                bubbles: true
+            });
+            document.dispatchEvent(ctrlK);
+            await new Promise(r => setTimeout(r, 100));
+
+            const fKey = new KeyboardEvent('keydown', {
+                key: 'f',
+                code: 'KeyF',
+                keyCode: 70,
+                bubbles: true
+            });
+            document.dispatchEvent(fKey);
+
+            return { success: true, method: 'keyboard', message: 'Close workspace shortcut triggered' };
+        } catch(e) {
+            return { error: e.toString() };
+        }
+    })()`;
+
+    for (const ctx of cdp.contexts) {
+        try {
+            const res = await cdp.call('Runtime.evaluate', {
+                expression: EXP,
+                returnByValue: true,
+                awaitPromise: true,
+                contextId: ctx.id
+            });
+            if (res.result?.value) return res.result.value;
+        } catch (e) {
+            // Continue to next context
+        }
+    }
+    return { error: 'Failed to close workspace' };
+}
+
+/**
+ * List recent workspaces/directories if available
+ * @param {Object} cdp - CDP connection object
+ * @returns {Promise<Object>} List of recent workspaces
+ */
 export async function listRecentWorkspaces(cdp) {
     const EXP = `(async () => {
         try {

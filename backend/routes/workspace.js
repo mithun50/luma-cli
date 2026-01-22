@@ -7,7 +7,8 @@ import {
     getWorkspaceInfo,
     openFolderDialog,
     openDirectory,
-    listRecentWorkspaces
+    listRecentWorkspaces,
+    closeWorkspace
 } from '../cdp/workspace.js';
 
 /**
@@ -60,6 +61,15 @@ export function createWorkspaceRouter(options = {}) {
         }
 
         const result = await openDirectory(cdpManager.cdp, directory);
+        res.json(result);
+    });
+
+    // Close current workspace
+    router.post('/workspace/close', async (req, res) => {
+        if (!cdpManager.isConnected()) {
+            return res.status(503).json({ error: 'CDP disconnected' });
+        }
+        const result = await closeWorkspace(cdpManager.cdp);
         res.json(result);
     });
 

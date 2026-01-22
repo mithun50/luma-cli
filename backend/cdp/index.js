@@ -30,7 +30,10 @@ export { getAppState } from './state.js';
 export { checkGenerationState } from './generation.js';
 
 // Workspace
-export { getWorkspaceInfo, openFolderDialog, openDirectory, listRecentWorkspaces } from './workspace.js';
+export { getWorkspaceInfo, openFolderDialog, openDirectory, listRecentWorkspaces, closeWorkspace } from './workspace.js';
+
+// Chats (Multi-chat management)
+export { getChats, createChat, switchChat, deleteChat, renameChat } from './chats.js';
 
 /**
  * CDP State Manager - Manages CDP connection and snapshot state

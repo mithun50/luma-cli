@@ -1,4 +1,4 @@
-// Main App Screen - Like Expo Go
+// Main App Screen - Luma Mobile
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
@@ -10,7 +10,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../constants/theme';
 import { api, storage } from '../services';
-import { useConnection, useSnapshot, useAppState, useNotifications } from '../hooks';
+import {
+  useConnection,
+  useSnapshot,
+  useAppState,
+  useNotifications,
+  useWorkspace,
+  useChats,
+} from '../hooks';
 import { AppError, wrapError } from '../utils';
 import {
   Header,
@@ -19,11 +26,12 @@ import {
   ConnectScreen,
   SettingsModal,
   NotificationBanner,
-  ErrorDisplay,
+  ChatList,
 } from '../components';
 
 export default function MainScreen() {
   const [showSettings, setShowSettings] = useState(false);
+  const [showChatList, setShowChatList] = useState(false);
 
   // Connection management
   const {
@@ -33,6 +41,8 @@ export default function MainScreen() {
     reconnectInfo,
     serverUrl,
     error: connectionError,
+    connectionQuality,
+    latency,
     connect,
     disconnect,
     retry: retryConnection,
@@ -67,10 +77,41 @@ export default function MainScreen() {
     dismissNotification,
   } = useNotifications(isConnected);
 
+  // Workspace management
+  const {
+    workspace,
+    recentWorkspaces,
+    isLoading: workspaceLoading,
+    error: workspaceError,
+    openDirectory,
+    openFolderDialog,
+    closeWorkspace,
+    refresh: refreshWorkspace,
+    retry: retryWorkspace,
+    clearError: clearWorkspaceError,
+  } = useWorkspace(isConnected);
+
+  // Chat management (multichat)
+  const {
+    chats,
+    activeChat,
+    isLoading: chatsLoading,
+    error: chatsError,
+    createChat,
+    switchChat,
+    deleteChat,
+    renameChat,
+    refresh: refreshChats,
+    retry: retryChats,
+    clearError: clearChatsError,
+  } = useChats(isConnected);
+
   // Refresh app state when connected
   useEffect(() => {
     if (isConnected) {
       refreshState();
+      refreshWorkspace();
+      refreshChats();
     }
   }, [isConnected]);
 
@@ -159,6 +200,44 @@ export default function MainScreen() {
     }
   }, [updateModel]);
 
+  // Handle workspace actions (errors handled by useWorkspace hook)
+  const handleOpenFolder = useCallback(async () => {
+    const result = await openFolderDialog();
+    // Error will be displayed in SettingsModal via workspaceError
+    return result;
+  }, [openFolderDialog]);
+
+  const handleCloseWorkspace = useCallback(async () => {
+    const result = await closeWorkspace();
+    // Error will be displayed in SettingsModal via workspaceError
+    return result;
+  }, [closeWorkspace]);
+
+  // Handle chat actions (errors handled by useChats hook and ChatList component)
+  const handleCreateChat = useCallback(async () => {
+    const result = await createChat();
+    // Error will be displayed in ChatList component
+    return result;
+  }, [createChat]);
+
+  const handleSwitchChat = useCallback(async (chatId) => {
+    const result = await switchChat(chatId);
+    // Error will be displayed in ChatList component
+    return result;
+  }, [switchChat]);
+
+  const handleDeleteChat = useCallback(async (chatId) => {
+    const result = await deleteChat(chatId);
+    // Error will be displayed in ChatList component
+    return result;
+  }, [deleteChat]);
+
+  const handleRenameChat = useCallback(async (chatId, name) => {
+    const result = await renameChat(chatId, name);
+    // Error will be displayed in ChatList component
+    return result;
+  }, [renameChat]);
+
   // Handle scroll in chat view
   const handleScroll = useCallback((scrollPercent) => {
     // Can be used for scroll-to-bottom button visibility
@@ -199,16 +278,18 @@ export default function MainScreen() {
 
   // Main chat screen
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         {/* Header */}
         <Header
           isConnected={isConnected}
           isGenerating={isGenerating}
+          connectionQuality={connectionQuality}
+          latency={latency}
           mode={mode}
           model={model}
           onSettingsPress={() => setShowSettings(true)}
@@ -243,6 +324,30 @@ export default function MainScreen() {
           onModelChange={handleModelChange}
           onDisconnect={handleDisconnect}
           serverUrl={serverUrl}
+          workspace={workspace}
+          workspaceLoading={workspaceLoading}
+          workspaceError={workspaceError}
+          onOpenFolder={handleOpenFolder}
+          onCloseWorkspace={handleCloseWorkspace}
+          onWorkspaceRetry={retryWorkspace}
+          onClearWorkspaceError={clearWorkspaceError}
+          onShowChats={() => setShowChatList(true)}
+        />
+
+        {/* Chat List Modal */}
+        <ChatList
+          visible={showChatList}
+          onClose={() => setShowChatList(false)}
+          chats={chats}
+          activeChat={activeChat}
+          isLoading={chatsLoading}
+          error={chatsError}
+          onCreateChat={handleCreateChat}
+          onSwitchChat={handleSwitchChat}
+          onDeleteChat={handleDeleteChat}
+          onRenameChat={handleRenameChat}
+          onRetry={retryChats}
+          onClearError={clearChatsError}
         />
 
         {/* In-App Notification Banner (includes reconnecting state) */}

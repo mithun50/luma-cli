@@ -188,6 +188,50 @@ class LumaAPI {
     });
   }
 
+  // Close current workspace
+  async closeWorkspace() {
+    return this.request(config.endpoints.workspaceClose, {
+      method: 'POST',
+    });
+  }
+
+  // Get all chats
+  async getChats() {
+    return this.request(config.endpoints.chats);
+  }
+
+  // Create new chat
+  async createChat(name = '') {
+    return this.request(config.endpoints.chatCreate, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  // Switch to a chat
+  async switchChat(chatId) {
+    return this.request(config.endpoints.chatSwitch, {
+      method: 'POST',
+      body: JSON.stringify({ chatId }),
+    });
+  }
+
+  // Delete a chat
+  async deleteChat(chatId) {
+    return this.request(config.endpoints.chatDelete, {
+      method: 'POST',
+      body: JSON.stringify({ chatId }),
+    });
+  }
+
+  // Rename a chat
+  async renameChat(chatId, name) {
+    return this.request(config.endpoints.chatRename, {
+      method: 'POST',
+      body: JSON.stringify({ chatId, name }),
+    });
+  }
+
   // Remote click
   async remoteClick(selector, index = 0, textContent = '') {
     return this.request(config.endpoints.remoteClick, {

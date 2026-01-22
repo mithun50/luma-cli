@@ -1,9 +1,104 @@
-// Chat View Component - Renders the snapshot HTML
-import React, { useRef, useCallback } from 'react';
-import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
+// Chat View Component - Modern Design with Snapshot Rendering
+import React, { useRef, useCallback, useEffect } from 'react';
+import { View, StyleSheet, Text, Animated } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { colors, spacing } from '../constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, borderRadius, fontSize, fontWeight } from '../constants/theme';
 import { ErrorDisplay } from './ErrorDisplay';
+
+// Loading indicator with pulse animation
+function LoadingState() {
+  const pulseAnim = useRef(new Animated.Value(0.3)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 0.3, duration: 1000, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(scaleAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+          Animated.timing(scaleAnim, { toValue: 0.95, duration: 1000, useNativeDriver: true }),
+        ]),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, []);
+
+  return (
+    <View style={styles.stateContainer}>
+      <Animated.View style={[styles.loadingIcon, { opacity: pulseAnim, transform: [{ scale: scaleAnim }] }]}>
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          style={styles.loadingGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <Ionicons name="chatbubbles-outline" size={32} color={colors.white} />
+        </LinearGradient>
+      </Animated.View>
+      <Text style={styles.stateTitle}>Loading Chat</Text>
+      <View style={styles.loadingDots}>
+        <AnimatedDot delay={0} />
+        <AnimatedDot delay={200} />
+        <AnimatedDot delay={400} />
+      </View>
+    </View>
+  );
+}
+
+// Animated loading dot
+function AnimatedDot({ delay }) {
+  const opacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 400, useNativeDriver: true }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [delay]);
+
+  return <Animated.View style={[styles.loadingDot, { opacity }]} />;
+}
+
+// Empty state when no snapshot
+function EmptyState() {
+  return (
+    <View style={styles.stateContainer}>
+      <View style={styles.emptyIcon}>
+        <LinearGradient
+          colors={[colors.primaryMuted, 'rgba(200, 191, 255, 0.05)']}
+          style={styles.emptyGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <Ionicons name="chatbubble-ellipses-outline" size={40} color={colors.primary} />
+        </LinearGradient>
+      </View>
+      <Text style={styles.stateTitle}>No Chat Active</Text>
+      <Text style={styles.stateSubtitle}>Open a chat in Antigravity to see it here</Text>
+
+      {/* Hint card */}
+      <View style={styles.hintCard}>
+        <View style={styles.hintIconContainer}>
+          <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+        </View>
+        <Text style={styles.hintText}>
+          Start a conversation on your desktop and it will appear here in real-time
+        </Text>
+      </View>
+    </View>
+  );
+}
 
 export function ChatView({ snapshot, isLoading, error, onRetry, onScroll, onElementClick }) {
   const webViewRef = useRef(null);
@@ -11,32 +106,7 @@ export function ChatView({ snapshot, isLoading, error, onRetry, onScroll, onElem
   // Build HTML content from snapshot
   const buildHTML = useCallback(() => {
     if (!snapshot || !snapshot.html) {
-      return `
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-              body {
-                background-color: ${colors.background};
-                color: ${colors.textSecondary};
-                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
-                margin: 0;
-                text-align: center;
-              }
-            </style>
-          </head>
-          <body>
-            <div>
-              <p>No chat snapshot available</p>
-              <p style="font-size: 12px; opacity: 0.6;">Open a chat in Antigravity to see it here</p>
-            </div>
-          </body>
-        </html>
-      `;
+      return null;
     }
 
     // Inject custom styles and click handlers
@@ -45,9 +115,9 @@ export function ChatView({ snapshot, isLoading, error, onRetry, onScroll, onElem
         body {
           background-color: ${snapshot.backgroundColor || colors.background} !important;
           color: ${snapshot.color || colors.text} !important;
-          font-family: ${snapshot.fontFamily || '-apple-system, BlinkMacSystemFont, sans-serif'} !important;
+          font-family: ${snapshot.fontFamily || '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif'} !important;
           margin: 0;
-          padding: 8px;
+          padding: 12px;
           -webkit-touch-callout: none;
           -webkit-user-select: none;
           user-select: none;
@@ -71,6 +141,11 @@ export function ChatView({ snapshot, isLoading, error, onRetry, onScroll, onElem
         * {
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Smooth scroll behavior */
+        html {
+          scroll-behavior: smooth;
         }
       </style>
     `;
@@ -110,6 +185,12 @@ export function ChatView({ snapshot, isLoading, error, onRetry, onScroll, onElem
             }));
           }
         });
+
+        // Auto-scroll to bottom on content change
+        const observer = new MutationObserver(() => {
+          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
       </script>
     `;
 
@@ -154,20 +235,22 @@ export function ChatView({ snapshot, isLoading, error, onRetry, onScroll, onElem
     );
   }
 
+  // Show loading state
   if (isLoading && !snapshot) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading chat...</Text>
-      </View>
-    );
+    return <LoadingState />;
+  }
+
+  // Show empty state if no snapshot
+  const html = buildHTML();
+  if (!html) {
+    return <EmptyState />;
   }
 
   return (
     <View style={styles.container}>
       <WebView
         ref={webViewRef}
-        source={{ html: buildHTML() }}
+        source={{ html }}
         style={styles.webview}
         onMessage={handleMessage}
         scrollEnabled={true}
@@ -192,15 +275,83 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
-  loadingContainer: {
+  stateContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background,
+    padding: spacing.xl,
   },
-  loadingText: {
+  loadingIcon: {
+    marginBottom: spacing.lg,
+  },
+  loadingGradient: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingDots: {
+    flexDirection: 'row',
+    gap: spacing.sm,
     marginTop: spacing.md,
+  },
+  loadingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
+  },
+  emptyIcon: {
+    marginBottom: spacing.lg,
+  },
+  emptyGradient: {
+    width: 88,
+    height: 88,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.primaryMuted,
+  },
+  stateTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  stateSubtitle: {
+    fontSize: fontSize.md,
     color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
+  hintCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    borderRadius: borderRadius.xl,
+    padding: spacing.md,
+    maxWidth: 300,
+    gap: spacing.sm,
+  },
+  hintIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primaryMuted,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  hintText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: fontSize.sm * 1.5,
   },
 });
 

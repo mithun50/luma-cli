@@ -47,7 +47,8 @@ export async function launchAntigravity(options = {}) {
         try {
             antigravityProcess = spawn('antigravity', args, {
                 detached: true,
-                stdio: ['ignore', 'pipe', 'pipe']
+                stdio: ['ignore', 'pipe', 'pipe'],
+                shell: true  // Use shell to resolve PATH (fixes Windows and custom PATH locations)
             });
         } catch (err) {
             reject(new Error(`Failed to spawn Antigravity: ${err.message}`));
