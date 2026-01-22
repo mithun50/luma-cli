@@ -31,7 +31,15 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "networkSecurityConfig": "./android/app/src/main/res/xml/network_security_config.xml"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
