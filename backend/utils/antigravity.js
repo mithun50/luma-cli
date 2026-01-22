@@ -39,33 +39,61 @@ export async function launchAntigravity(options = {}) {
         return { process: null, port: debugPort, alreadyRunning: true };
     }
 
-    // Spawn Antigravity process
-    const args = [directory, `--remote-debugging-port=${debugPort}`];
+    // Spawn Antigravity process with proper error handling
+    return new Promise((resolve, reject) => {
+        const args = [directory, `--remote-debugging-port=${debugPort}`];
 
-    const antigravityProcess = spawn('antigravity', args, {
-        detached: true,
-        stdio: ['ignore', 'pipe', 'pipe']
-    });
-
-    // Handle spawn errors
-    antigravityProcess.on('error', (err) => {
-        throw new Error(`Failed to launch Antigravity: ${err.message}. Is 'antigravity' in your PATH?`);
-    });
-
-    // Wait for CDP to become available
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < timeout) {
-        if (await isCDPAvailable(debugPort)) {
-            return { process: antigravityProcess, port: debugPort, alreadyRunning: false };
+        let antigravityProcess;
+        try {
+            antigravityProcess = spawn('antigravity', args, {
+                detached: true,
+                stdio: ['ignore', 'pipe', 'pipe']
+            });
+        } catch (err) {
+            reject(new Error(`Failed to spawn Antigravity: ${err.message}`));
+            return;
         }
-        // Wait 500ms before checking again
-        await new Promise(resolve => setTimeout(resolve, 500));
-    }
 
-    // Timeout - kill the process and throw error
-    antigravityProcess.kill();
-    throw new Error(`Antigravity started but CDP not available after ${timeout / 1000}s`);
+        let spawnError = null;
+
+        // Handle spawn errors (e.g., command not found)
+        antigravityProcess.on('error', (err) => {
+            spawnError = err;
+            reject(new Error(`Failed to launch Antigravity: ${err.message}. Is 'antigravity' in your PATH?`));
+        });
+
+        // Wait for CDP to become available
+        const checkCDP = async () => {
+            const startTime = Date.now();
+
+            while (Date.now() - startTime < timeout) {
+                // Check if spawn error occurred
+                if (spawnError) {
+                    return; // Already rejected
+                }
+
+                if (await isCDPAvailable(debugPort)) {
+                    resolve({ process: antigravityProcess, port: debugPort, alreadyRunning: false });
+                    return;
+                }
+                // Wait 500ms before checking again
+                await new Promise(r => setTimeout(r, 500));
+            }
+
+            // Timeout - kill the process if it's running
+            if (!spawnError) {
+                try {
+                    antigravityProcess.kill();
+                } catch (e) {
+                    // Ignore kill errors
+                }
+                reject(new Error(`Antigravity started but CDP not available after ${timeout / 1000}s`));
+            }
+        };
+
+        // Start checking after a small delay to allow error event to fire first
+        setTimeout(checkCDP, 100);
+    });
 }
 
 /**
