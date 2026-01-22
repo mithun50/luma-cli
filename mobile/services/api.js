@@ -32,13 +32,25 @@ class LumaAPI {
     let lastError;
 
     for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      let timeoutId = null;
+
+      if (config.requestTimeout > 0) {
+        timeoutId = setTimeout(() => controller.abort(), config.requestTimeout);
+      }
+
       try {
         const fetchOptions = {
           ...options,
           headers,
+          signal: controller.signal,
         };
 
         const response = await fetch(url, fetchOptions);
+
+        // Clear timeout on success
+        if (timeoutId) clearTimeout(timeoutId);
 
         if (!response.ok) {
           const status = response.status;
@@ -63,12 +75,18 @@ class LumaAPI {
 
         return await response.json();
       } catch (error) {
+        // Clear timeout on error
+        if (timeoutId) clearTimeout(timeoutId);
+
         // If it's already an AppError, preserve it
         if (error instanceof AppError) {
           lastError = error;
         } else {
-          const category = categorizeError(error);
-          lastError = new AppError(category, error);
+          // Check if it's a timeout (abort) error
+          const isTimeout = error.name === 'AbortError';
+          const category = isTimeout ? 'timeout' : categorizeError(error);
+          const message = isTimeout ? 'Request timed out' : error.message;
+          lastError = new AppError(category, error, isTimeout ? message : null);
         }
 
         // Check if we should retry
@@ -78,13 +96,13 @@ class LumaAPI {
             config.retryBaseDelay,
             config.retryMaxDelay
           );
-          console.log(`[API] ${endpoint} failed (${error.message}), retrying in ${Math.round(delay/1000)}s (${attempt + 1}/${config.maxRetries})`);
+          console.log(`[API] ${endpoint} failed (${lastError.message}), retrying in ${Math.round(delay/1000)}s (${attempt + 1}/${config.maxRetries})`);
           await sleep(delay);
           continue;
         }
 
         // Final failure
-        console.warn(`[API] ${endpoint} failed:`, error.message);
+        console.warn(`[API] ${endpoint} failed:`, lastError.message);
       }
     }
 

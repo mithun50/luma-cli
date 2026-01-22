@@ -14,38 +14,38 @@ export const ErrorCategory = {
 // User-friendly messages per category
 export const ErrorMessages = {
   [ErrorCategory.NETWORK]: {
-    title: 'Connection Problem',
-    message: 'Unable to reach the server. Please check your connection.',
+    title: 'Connection Failed',
+    message: 'Unable to reach the server. Make sure the server is running and the URL is correct.',
     retryable: true,
   },
   [ErrorCategory.TIMEOUT]: {
-    title: 'Request Timed Out',
-    message: 'The server took too long to respond.',
+    title: 'Connection Timed Out',
+    message: 'The server is not responding. It may be offline or the URL may be incorrect.',
     retryable: true,
   },
   [ErrorCategory.SERVER]: {
     title: 'Server Error',
-    message: 'Something went wrong on the server.',
+    message: 'The server encountered an error. Please try again.',
     retryable: true,
   },
   [ErrorCategory.CLIENT]: {
-    title: 'Request Error',
-    message: 'There was a problem with your request.',
+    title: 'Invalid Request',
+    message: 'There was a problem with the request.',
     retryable: false,
   },
   [ErrorCategory.WEBSOCKET]: {
     title: 'Connection Lost',
-    message: 'Real-time connection lost. Reconnecting...',
+    message: 'Real-time connection lost. Attempting to reconnect...',
     retryable: true,
   },
   [ErrorCategory.STORAGE]: {
     title: 'Storage Error',
-    message: 'Failed to save or load data.',
+    message: 'Failed to save or load data locally.',
     retryable: true,
   },
   [ErrorCategory.UNKNOWN]: {
-    title: 'Error',
-    message: 'Something went wrong.',
+    title: 'Connection Error',
+    message: 'Something went wrong. Please try again.',
     retryable: true,
   },
 };

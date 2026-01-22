@@ -104,11 +104,23 @@ export function ConnectScreen({ onConnect, isConnecting, error }) {
           </View>
 
           {error && (
-            <View style={styles.errorContainer}>
-              <Ionicons name="warning" size={16} color={colors.error} />
-              <Text style={styles.errorText}>
-                {error.message || error.title || String(error)}
+            <View style={styles.errorCard}>
+              <View style={styles.errorHeader}>
+                <View style={styles.errorIconCircle}>
+                  <Ionicons name="alert-circle" size={24} color={colors.error} />
+                </View>
+                <Text style={styles.errorTitle}>
+                  {error.title || 'Connection Failed'}
+                </Text>
+              </View>
+              <Text style={styles.errorMessage}>
+                {error.message || String(error)}
               </Text>
+              {error.retryable !== false && (
+                <Text style={styles.errorHint}>
+                  Check the server URL and try again
+                </Text>
+              )}
             </View>
           )}
 
@@ -118,7 +130,10 @@ export function ConnectScreen({ onConnect, isConnecting, error }) {
             disabled={isConnecting || !serverUrl.trim()}
           >
             {isConnecting ? (
-              <ActivityIndicator color={colors.text} />
+              <>
+                <ActivityIndicator color={colors.text} size="small" />
+                <Text style={styles.connectButtonText}>Connecting...</Text>
+              </>
             ) : (
               <>
                 <Ionicons name="link" size={20} color={colors.text} />
@@ -126,6 +141,12 @@ export function ConnectScreen({ onConnect, isConnecting, error }) {
               </>
             )}
           </TouchableOpacity>
+
+          {isConnecting && (
+            <Text style={styles.connectingHint}>
+              This may take a moment if the server is starting up...
+            </Text>
+          )}
         </View>
 
         {/* Recent Connections */}
@@ -242,18 +263,44 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  errorContainer: {
+  errorCard: {
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.error,
+  },
+  errorHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.sm,
-    padding: spacing.sm,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
   },
-  errorText: {
-    color: colors.error,
+  errorIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  errorTitle: {
+    color: colors.text,
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    flex: 1,
+  },
+  errorMessage: {
+    color: colors.textSecondary,
     fontSize: fontSize.sm,
-    marginLeft: spacing.xs,
+    lineHeight: 20,
+    marginBottom: spacing.xs,
+  },
+  errorHint: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    fontStyle: 'italic',
   },
   connectButton: {
     flexDirection: 'row',
@@ -272,6 +319,12 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
     marginLeft: spacing.sm,
+  },
+  connectingHint: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    textAlign: 'center',
+    marginTop: spacing.sm,
   },
   recentContainer: {
     marginBottom: spacing.xl,

@@ -30,8 +30,8 @@ export const config = {
   wsMaxRetries: 10,
 
   // API request settings
-  requestTimeout: 0,            // No timeout (0 = disabled)
-  maxRetries: 5,                // 5 retry attempts
+  requestTimeout: 15000,        // 15 second timeout per request
+  maxRetries: 3,                // 3 retry attempts
   retryBaseDelay: 1000,         // 1 second base delay
   retryMaxDelay: 30000,         // Max 30 seconds between retries
   retryableStatuses: [408, 429, 500, 502, 503, 504],
