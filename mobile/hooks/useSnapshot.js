@@ -4,11 +4,21 @@ import { api, websocket } from '../services';
 import { config } from '../constants/config';
 import { wrapError, AppError } from '../utils';
 
+// Errors to silently ignore (expected during normal operation)
+const IGNORED_ERRORS = [
+  'No snapshot available yet',
+  'Server URL not configured',
+];
+
+// Errors that indicate server is temporarily unavailable (don't spam UI)
+const TRANSIENT_STATUS_CODES = [502, 503, 504];
+
 export function useSnapshot(isConnected) {
   const [snapshot, setSnapshot] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const pollingRef = useRef(null);
+  const consecutiveErrorsRef = useRef(0);
 
   // Clear error
   const clearError = useCallback(() => {
@@ -17,18 +27,55 @@ export function useSnapshot(isConnected) {
 
   // Fetch snapshot
   const fetchSnapshot = useCallback(async () => {
-    if (!isConnected) return;
+    // Don't fetch if not connected or API not configured
+    if (!isConnected || !api.isConfigured()) return;
 
     try {
       const data = await api.getSnapshot();
       setSnapshot(data);
       setError(null);
+      consecutiveErrorsRef.current = 0;
     } catch (err) {
-      // Ignore "No snapshot available yet" as it's expected
-      if (err.message !== 'No snapshot available yet') {
+      // Check if this is an ignorable error
+      const isIgnored = IGNORED_ERRORS.some(msg =>
+        err.message?.includes(msg)
+      );
+
+      if (isIgnored) {
+        return; // Silently ignore
+      }
+
+      // Check if this is a transient server error (503, etc.)
+      const statusMatch = err.message?.match(/HTTP (\d+)/);
+      const statusCode = statusMatch ? parseInt(statusMatch[1]) : null;
+      const isTransient = statusCode && TRANSIENT_STATUS_CODES.includes(statusCode);
+
+      consecutiveErrorsRef.current++;
+
+      // Only log and show error after multiple consecutive failures
+      // This prevents UI spam during server startup/restart
+      if (consecutiveErrorsRef.current >= 3) {
         const appError = err instanceof AppError ? err : wrapError(err);
-        console.error('Snapshot fetch error:', appError.originalError || appError);
+
+        // Use warn instead of error to avoid red box
+        if (!isTransient) {
+          console.warn('[Snapshot] Fetch failed:', appError.message);
+        }
+
         setError(appError);
+      }
+    }
+  }, [isConnected]);
+
+  // Clear state when disconnected
+  useEffect(() => {
+    if (!isConnected) {
+      setSnapshot(null);
+      setError(null);
+      consecutiveErrorsRef.current = 0;
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
       }
     }
   }, [isConnected]);
@@ -63,6 +110,7 @@ export function useSnapshot(isConnected) {
     return () => {
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
+        pollingRef.current = null;
       }
     };
   }, [isConnected, fetchSnapshot]);
@@ -71,6 +119,7 @@ export function useSnapshot(isConnected) {
   const refresh = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    consecutiveErrorsRef.current = 0;
     await fetchSnapshot();
     setIsLoading(false);
   }, [fetchSnapshot]);

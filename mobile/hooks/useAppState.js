@@ -3,6 +3,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../services';
 import { wrapError, AppError } from '../utils';
 
+// Errors to silently ignore
+const IGNORED_ERRORS = [
+  'Server URL not configured',
+];
+
 export function useAppState(isConnected) {
   const [mode, setModeState] = useState('Unknown');
   const [model, setModelState] = useState('Unknown');
@@ -16,7 +21,7 @@ export function useAppState(isConnected) {
 
   // Fetch current state
   const fetchState = useCallback(async () => {
-    if (!isConnected) return;
+    if (!isConnected || !api.isConfigured()) return;
 
     try {
       const state = await api.getAppState();
@@ -24,9 +29,27 @@ export function useAppState(isConnected) {
       if (state.model) setModelState(state.model);
       setError(null);
     } catch (err) {
+      // Check if this is an ignorable error
+      const isIgnored = IGNORED_ERRORS.some(msg =>
+        err.message?.includes(msg)
+      );
+
+      if (isIgnored) {
+        return; // Silently ignore
+      }
+
       const appError = err instanceof AppError ? err : wrapError(err);
-      console.error('Failed to fetch app state:', appError.originalError || appError);
-      setError(appError);
+      console.warn('[AppState] Fetch failed:', appError.message);
+      // Don't set error for fetch failures - it's not critical
+    }
+  }, [isConnected]);
+
+  // Clear state when disconnected
+  useEffect(() => {
+    if (!isConnected) {
+      setModeState('Unknown');
+      setModelState('Unknown');
+      setError(null);
     }
   }, [isConnected]);
 
@@ -39,7 +62,7 @@ export function useAppState(isConnected) {
 
   // Set mode
   const setMode = useCallback(async (newMode) => {
-    if (!isConnected) return;
+    if (!isConnected || !api.isConfigured()) return;
 
     setIsLoading(true);
     setError(null);
@@ -50,7 +73,7 @@ export function useAppState(isConnected) {
       }
     } catch (err) {
       const appError = err instanceof AppError ? err : wrapError(err);
-      console.error('Failed to set mode:', appError.originalError || appError);
+      console.warn('[AppState] Failed to set mode:', appError.message);
       setError(appError);
       throw appError;
     } finally {
@@ -60,7 +83,7 @@ export function useAppState(isConnected) {
 
   // Set model
   const setModel = useCallback(async (newModel) => {
-    if (!isConnected) return;
+    if (!isConnected || !api.isConfigured()) return;
 
     setIsLoading(true);
     setError(null);
@@ -71,7 +94,7 @@ export function useAppState(isConnected) {
       }
     } catch (err) {
       const appError = err instanceof AppError ? err : wrapError(err);
-      console.error('Failed to set model:', appError.originalError || appError);
+      console.warn('[AppState] Failed to set model:', appError.message);
       setError(appError);
       throw appError;
     } finally {

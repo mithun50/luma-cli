@@ -18,9 +18,17 @@ class LumaAPI {
     this.baseUrl = url.replace(/\/$/, '');
   }
 
+  // Check if API is configured
+  isConfigured() {
+    return !!this.baseUrl;
+  }
+
   async request(endpoint, options = {}) {
     if (!this.baseUrl) {
-      throw new AppError('client', new Error('Server URL not configured'));
+      // Don't retry - this is a client configuration issue
+      const error = new AppError('client', new Error('Server URL not configured'));
+      error.retryable = false;
+      throw error;
     }
 
     const url = `${this.baseUrl}${endpoint}`;
