@@ -39,8 +39,15 @@ mobile/dist/
 *.jks
 *.p8
 *.p12
+*.key
 *.mobileprovision
 *.orig.*
+
+# Credentials - NEVER commit
+credentials.json
+mobile/credentials.json
+google-service-account.json
+mobile/google-service-account.json
 
 # Metro bundler
 .metro-health-check*
