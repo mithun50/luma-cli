@@ -1,6 +1,7 @@
 // Luma Storage Service
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { config } from '../constants/config';
+import { AppError, ErrorCategory } from '../utils';
 
 class LumaStorage {
   async get(key) {
@@ -9,7 +10,7 @@ class LumaStorage {
       return value ? JSON.parse(value) : null;
     } catch (error) {
       console.error('Storage get error:', error);
-      return null;
+      throw new AppError(ErrorCategory.STORAGE, error, 'Failed to read data');
     }
   }
 
@@ -19,7 +20,7 @@ class LumaStorage {
       return true;
     } catch (error) {
       console.error('Storage set error:', error);
-      return false;
+      throw new AppError(ErrorCategory.STORAGE, error, 'Failed to save data');
     }
   }
 
@@ -29,7 +30,7 @@ class LumaStorage {
       return true;
     } catch (error) {
       console.error('Storage remove error:', error);
-      return false;
+      throw new AppError(ErrorCategory.STORAGE, error, 'Failed to remove data');
     }
   }
 
@@ -39,26 +40,48 @@ class LumaStorage {
       return true;
     } catch (error) {
       console.error('Storage clear error:', error);
+      throw new AppError(ErrorCategory.STORAGE, error, 'Failed to clear storage');
+    }
+  }
+
+  // Safe get - returns default value on error instead of throwing
+  async safeGet(key, defaultValue = null) {
+    try {
+      const value = await AsyncStorage.getItem(key);
+      return value ? JSON.parse(value) : defaultValue;
+    } catch (error) {
+      console.error('Storage safeGet error:', error);
+      return defaultValue;
+    }
+  }
+
+  // Safe set - returns false on error instead of throwing
+  async safeSet(key, value) {
+    try {
+      await AsyncStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (error) {
+      console.error('Storage safeSet error:', error);
       return false;
     }
   }
 
-  // Convenience methods
+  // Convenience methods (using safe versions to avoid breaking app flow)
   async getServerUrl() {
-    return this.get(config.storageKeys.serverUrl);
+    return this.safeGet(config.storageKeys.serverUrl);
   }
 
   async setServerUrl(url) {
-    return this.set(config.storageKeys.serverUrl, url);
+    return this.safeSet(config.storageKeys.serverUrl, url);
   }
 
   async getPreferences() {
-    const prefs = await this.get(config.storageKeys.preferences);
+    const prefs = await this.safeGet(config.storageKeys.preferences);
     return prefs || {};
   }
 
   async setPreferences(prefs) {
-    return this.set(config.storageKeys.preferences, prefs);
+    return this.safeSet(config.storageKeys.preferences, prefs);
   }
 
   async updatePreference(key, value) {

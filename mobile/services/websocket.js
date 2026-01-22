@@ -1,5 +1,6 @@
 // Luma WebSocket Service
 import { config } from '../constants/config';
+import { calculateBackoffDelay, AppError, ErrorCategory } from '../utils';
 
 class LumaWebSocket {
   constructor() {
@@ -8,6 +9,7 @@ class LumaWebSocket {
     this.listeners = new Map();
     this.reconnectAttempts = 0;
     this.isConnecting = false;
+    this.reconnectTimeout = null;
   }
 
   setBaseUrl(url) {
@@ -22,7 +24,14 @@ class LumaWebSocket {
 
     if (!this.baseUrl) {
       console.error('WebSocket: No base URL configured');
+      this.emit('error', new AppError(ErrorCategory.WEBSOCKET, new Error('No base URL configured')));
       return;
+    }
+
+    // Clear any pending reconnect
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
     }
 
     this.isConnecting = true;
@@ -52,49 +61,98 @@ class LumaWebSocket {
       };
 
       this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error.message);
+        console.error('WebSocket error:', error.message || 'Unknown error');
         this.isConnecting = false;
-        this.emit('error', error);
+        this.emit('error', new AppError(ErrorCategory.WEBSOCKET, error));
       };
 
-      this.ws.onclose = () => {
-        console.log('WebSocket disconnected');
+      this.ws.onclose = (event) => {
+        console.log('WebSocket disconnected', event.code, event.reason);
         this.isConnecting = false;
-        this.emit('disconnected');
+        this.emit('disconnected', { code: event.code, reason: event.reason });
         this.attemptReconnect();
       };
     } catch (error) {
       console.error('WebSocket connection error:', error);
       this.isConnecting = false;
+      this.emit('error', new AppError(ErrorCategory.WEBSOCKET, error));
     }
   }
 
   attemptReconnect() {
     if (this.reconnectAttempts >= config.wsMaxRetries) {
       console.log('WebSocket: Max reconnect attempts reached');
-      this.emit('max_retries');
+      this.emit('max_retries', {
+        attempts: this.reconnectAttempts,
+        error: new AppError(
+          ErrorCategory.WEBSOCKET,
+          new Error('Max reconnect attempts reached'),
+          'Unable to reconnect after multiple attempts'
+        ),
+      });
       return;
     }
 
     this.reconnectAttempts++;
-    console.log(`WebSocket: Reconnecting (attempt ${this.reconnectAttempts})...`);
 
-    setTimeout(() => {
+    // Calculate delay with exponential backoff
+    const delay = calculateBackoffDelay(
+      this.reconnectAttempts - 1,
+      config.wsReconnectDelay,
+      config.wsMaxReconnectDelay
+    );
+
+    console.log(`WebSocket: Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${config.wsMaxRetries})...`);
+
+    // Emit reconnecting event with attempt info
+    this.emit('reconnecting', {
+      attempt: this.reconnectAttempts,
+      maxAttempts: config.wsMaxRetries,
+      delay,
+    });
+
+    this.reconnectTimeout = setTimeout(() => {
       this.connect();
-    }, config.wsReconnectDelay);
+    }, delay);
   }
 
   disconnect() {
+    // Clear any pending reconnect
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
+    // Reset reconnect counter
+    this.reconnectAttempts = 0;
+
     if (this.ws) {
       this.ws.close();
       this.ws = null;
     }
   }
 
+  // Reset reconnect attempts (useful when manually retrying)
+  resetReconnect() {
+    this.reconnectAttempts = 0;
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+  }
+
+  // Force reconnect (resets attempts and tries immediately)
+  forceReconnect() {
+    this.disconnect();
+    this.connect();
+  }
+
   send(data) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
+      return true;
     }
+    return false;
   }
 
   on(event, callback) {
@@ -128,6 +186,14 @@ class LumaWebSocket {
 
   isConnected() {
     return this.ws && this.ws.readyState === WebSocket.OPEN;
+  }
+
+  getReconnectInfo() {
+    return {
+      attempts: this.reconnectAttempts,
+      maxAttempts: config.wsMaxRetries,
+      isReconnecting: this.reconnectTimeout !== null,
+    };
   }
 }
 

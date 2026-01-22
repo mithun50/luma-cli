@@ -1,5 +1,12 @@
 // Luma API Service
 import { config } from '../constants/config';
+import {
+  AppError,
+  categorizeError,
+  calculateBackoffDelay,
+  sleep,
+  isRetryableStatus,
+} from '../utils';
 
 class LumaAPI {
   constructor() {
@@ -13,7 +20,7 @@ class LumaAPI {
 
   async request(endpoint, options = {}) {
     if (!this.baseUrl) {
-      throw new Error('Server URL not configured');
+      throw new AppError('client', new Error('Server URL not configured'));
     }
 
     const url = `${this.baseUrl}${endpoint}`;
@@ -22,21 +29,66 @@ class LumaAPI {
       ...options.headers,
     };
 
-    try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
+    let lastError;
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+    for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
+      try {
+        const fetchOptions = {
+          ...options,
+          headers,
+        };
+
+        const response = await fetch(url, fetchOptions);
+
+        if (!response.ok) {
+          const status = response.status;
+          const category = categorizeError(null, status);
+
+          // Check if we should retry
+          if (isRetryableStatus(status) && attempt < config.maxRetries) {
+            const delay = calculateBackoffDelay(
+              attempt,
+              config.retryBaseDelay,
+              config.retryMaxDelay
+            );
+            console.log(`[API] ${endpoint} failed (HTTP ${status}), retrying in ${Math.round(delay/1000)}s (${attempt + 1}/${config.maxRetries})`);
+            await sleep(delay);
+            continue;
+          }
+
+          // Final failure - log as warning (not error to avoid red box)
+          console.warn(`[API] ${endpoint} failed: HTTP ${status}`);
+          throw new AppError(category, new Error(`HTTP ${status}`));
+        }
+
+        return await response.json();
+      } catch (error) {
+        // If it's already an AppError, preserve it
+        if (error instanceof AppError) {
+          lastError = error;
+        } else {
+          const category = categorizeError(error);
+          lastError = new AppError(category, error);
+        }
+
+        // Check if we should retry
+        if (lastError.retryable && attempt < config.maxRetries) {
+          const delay = calculateBackoffDelay(
+            attempt,
+            config.retryBaseDelay,
+            config.retryMaxDelay
+          );
+          console.log(`[API] ${endpoint} failed (${error.message}), retrying in ${Math.round(delay/1000)}s (${attempt + 1}/${config.maxRetries})`);
+          await sleep(delay);
+          continue;
+        }
+
+        // Final failure
+        console.warn(`[API] ${endpoint} failed:`, error.message);
       }
-
-      return await response.json();
-    } catch (error) {
-      console.error(`API Error (${endpoint}):`, error.message);
-      throw error;
     }
+
+    throw lastError;
   }
 
   // Health check

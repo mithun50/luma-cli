@@ -25,8 +25,16 @@ export const config = {
   healthCheckInterval: 5000,
 
   // WebSocket reconnect settings
-  wsReconnectDelay: 2000,
+  wsReconnectDelay: 1000,
+  wsMaxReconnectDelay: 30000,
   wsMaxRetries: 10,
+
+  // API request settings
+  requestTimeout: 0,            // No timeout (0 = disabled)
+  maxRetries: 5,                // 5 retry attempts
+  retryBaseDelay: 1000,         // 1 second base delay
+  retryMaxDelay: 30000,         // Max 30 seconds between retries
+  retryableStatuses: [408, 429, 500, 502, 503, 504],
 
   // Available modes
   modes: ['Fast', 'Planning'],

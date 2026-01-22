@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../constants/theme';
 import { api, storage } from '../services';
 import { useConnection, useSnapshot, useAppState, useNotifications } from '../hooks';
+import { AppError, wrapError } from '../utils';
 import {
   Header,
   ChatView,
@@ -18,6 +19,7 @@ import {
   ConnectScreen,
   SettingsModal,
   NotificationBanner,
+  ErrorDisplay,
 } from '../components';
 
 export default function MainScreen() {
@@ -27,10 +29,15 @@ export default function MainScreen() {
   const {
     isConnected,
     isConnecting,
+    isReconnecting,
+    reconnectInfo,
     serverUrl,
     error: connectionError,
     connect,
     disconnect,
+    retry: retryConnection,
+    forceReconnectWs,
+    clearError: clearConnectionError,
   } = useConnection();
 
   // Snapshot polling (only when connected)
@@ -38,6 +45,7 @@ export default function MainScreen() {
     snapshot,
     isLoading: isLoadingSnapshot,
     error: snapshotError,
+    retry: retrySnapshot,
   } = useSnapshot(isConnected);
 
   // App state (mode, model)
@@ -45,9 +53,11 @@ export default function MainScreen() {
     mode,
     model,
     isLoading: isLoadingState,
+    error: appStateError,
     setMode: updateMode,
     setModel: updateModel,
     refresh: refreshState,
+    clearError: clearAppStateError,
   } = useAppState(isConnected);
 
   // Notifications (handles generation state via WebSocket)
@@ -78,16 +88,36 @@ export default function MainScreen() {
     setShowSettings(false);
   }, [disconnect]);
 
-  // Handle send message
+  // Handle send message with retry option
   const handleSend = useCallback(async (message) => {
     if (!isConnected) return;
 
     try {
       await api.sendMessage(message);
       // Generation state will be updated via WebSocket events
-    } catch (e) {
-      console.error('Send error:', e);
-      Alert.alert('Error', 'Failed to send message');
+    } catch (err) {
+      const appError = err instanceof AppError ? err : wrapError(err);
+      console.error('Send error:', appError.originalError || appError);
+
+      // Show alert with retry option if error is retryable
+      if (appError.retryable) {
+        Alert.alert(
+          appError.title || 'Error',
+          appError.message || 'Failed to send message',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Retry',
+              onPress: () => handleSend(message),
+            },
+          ]
+        );
+      } else {
+        Alert.alert(
+          appError.title || 'Error',
+          appError.message || 'Failed to send message'
+        );
+      }
     }
   }, [isConnected]);
 
@@ -98,8 +128,8 @@ export default function MainScreen() {
     try {
       await api.stopGeneration();
       // Generation state will be updated via WebSocket events
-    } catch (e) {
-      console.error('Stop error:', e);
+    } catch (err) {
+      console.error('Stop error:', err);
     }
   }, [isConnected]);
 
@@ -107,8 +137,12 @@ export default function MainScreen() {
   const handleModeChange = useCallback(async (newMode) => {
     try {
       await updateMode(newMode);
-    } catch (e) {
-      Alert.alert('Error', 'Failed to change mode');
+    } catch (err) {
+      const appError = err instanceof AppError ? err : wrapError(err);
+      Alert.alert(
+        appError.title || 'Error',
+        appError.message || 'Failed to change mode'
+      );
     }
   }, [updateMode]);
 
@@ -116,8 +150,12 @@ export default function MainScreen() {
   const handleModelChange = useCallback(async (newModel) => {
     try {
       await updateModel(newModel);
-    } catch (e) {
-      Alert.alert('Error', 'Failed to change model');
+    } catch (err) {
+      const appError = err instanceof AppError ? err : wrapError(err);
+      Alert.alert(
+        appError.title || 'Error',
+        appError.message || 'Failed to change model'
+      );
     }
   }, [updateModel]);
 
@@ -131,6 +169,17 @@ export default function MainScreen() {
     console.log('Element clicked:', selector, text);
   }, []);
 
+  // Build reconnecting notification message
+  const getReconnectingMessage = () => {
+    if (!isReconnecting || !reconnectInfo) return null;
+    return {
+      title: 'Reconnecting',
+      message: `Attempt ${reconnectInfo.attempt}/${reconnectInfo.maxAttempts}...`,
+      type: 'warning',
+      duration: 0, // Persistent until connection restored
+    };
+  };
+
   // Show connect screen if not connected
   if (!isConnected) {
     return (
@@ -143,6 +192,10 @@ export default function MainScreen() {
       </SafeAreaView>
     );
   }
+
+  // Determine which notification to show (reconnecting takes priority)
+  const reconnectingNotification = getReconnectingMessage();
+  const activeNotification = reconnectingNotification || notification;
 
   // Main chat screen
   return (
@@ -161,10 +214,12 @@ export default function MainScreen() {
           onSettingsPress={() => setShowSettings(true)}
         />
 
-        {/* Chat View */}
+        {/* Chat View with error handling */}
         <ChatView
           snapshot={snapshot}
           isLoading={isLoadingSnapshot}
+          error={snapshotError}
+          onRetry={retrySnapshot}
           onScroll={handleScroll}
           onElementClick={handleElementClick}
         />
@@ -190,15 +245,15 @@ export default function MainScreen() {
           serverUrl={serverUrl}
         />
 
-        {/* In-App Notification Banner */}
+        {/* In-App Notification Banner (includes reconnecting state) */}
         <NotificationBanner
-          visible={!!notification}
-          title={notification?.title}
-          message={notification?.message}
-          type={notification?.type}
-          duration={notification?.duration}
-          vibrate={notification?.vibrate}
-          onDismiss={dismissNotification}
+          visible={!!activeNotification}
+          title={activeNotification?.title}
+          message={activeNotification?.message}
+          type={activeNotification?.type}
+          duration={activeNotification?.duration}
+          vibrate={activeNotification?.vibrate}
+          onDismiss={reconnectingNotification ? undefined : dismissNotification}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>

@@ -14,10 +14,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, fontSize, fontWeight } from '../constants/theme';
 import { storage } from '../services';
+import { QRScanner } from './QRScanner';
 
 export function ConnectScreen({ onConnect, isConnecting, error }) {
   const [serverUrl, setServerUrl] = useState('');
   const [recentUrls, setRecentUrls] = useState([]);
+  const [showScanner, setShowScanner] = useState(false);
 
   // Load recent URLs
   useEffect(() => {
@@ -45,6 +47,16 @@ export function ConnectScreen({ onConnect, isConnecting, error }) {
   };
 
   const handleQuickConnect = (url) => {
+    setServerUrl(url);
+    onConnect(url);
+  };
+
+  const handleQRScan = (scannedUrl) => {
+    // Ensure URL has protocol
+    let url = scannedUrl.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'http://' + url;
+    }
     setServerUrl(url);
     onConnect(url);
   };
@@ -84,6 +96,7 @@ export function ConnectScreen({ onConnect, isConnecting, error }) {
             />
             <TouchableOpacity
               style={styles.scanButton}
+              onPress={() => setShowScanner(true)}
               disabled={isConnecting}
             >
               <Ionicons name="qr-code" size={24} color={colors.text} />
@@ -93,7 +106,9 @@ export function ConnectScreen({ onConnect, isConnecting, error }) {
           {error && (
             <View style={styles.errorContainer}>
               <Ionicons name="warning" size={16} color={colors.error} />
-              <Text style={styles.errorText}>{error}</Text>
+              <Text style={styles.errorText}>
+                {error.message || error.title || String(error)}
+              </Text>
             </View>
           )}
 
@@ -149,6 +164,13 @@ export function ConnectScreen({ onConnect, isConnecting, error }) {
           </View>
         </View>
       </ScrollView>
+
+      {/* QR Scanner Modal */}
+      <QRScanner
+        visible={showScanner}
+        onScan={handleQRScan}
+        onClose={() => setShowScanner(false)}
+      />
     </KeyboardAvoidingView>
   );
 }

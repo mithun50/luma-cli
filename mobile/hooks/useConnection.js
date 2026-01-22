@@ -1,10 +1,13 @@
 // Connection Hook
 import { useState, useEffect, useCallback } from 'react';
 import { api, websocket, storage } from '../services';
+import { AppError, wrapError } from '../utils';
 
 export function useConnection() {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [reconnectInfo, setReconnectInfo] = useState(null);
   const [serverUrl, setServerUrlState] = useState(null);
   const [error, setError] = useState(null);
 
@@ -19,6 +22,11 @@ export function useConnection() {
       setServerUrlState(savedUrl);
     }
   };
+
+  // Clear error
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
 
   const connect = useCallback(async (url) => {
     setIsConnecting(true);
@@ -42,7 +50,8 @@ export function useConnection() {
         return true;
       }
     } catch (err) {
-      setError(err.message);
+      const appError = wrapError(err);
+      setError(appError);
       setIsConnected(false);
     }
 
@@ -53,32 +62,85 @@ export function useConnection() {
   const disconnect = useCallback(() => {
     websocket.disconnect();
     setIsConnected(false);
+    setIsReconnecting(false);
+    setReconnectInfo(null);
+    setError(null);
   }, []);
+
+  // Manual retry connection
+  const retry = useCallback(async () => {
+    if (!serverUrl) return false;
+
+    setError(null);
+    websocket.resetReconnect();
+    return connect(serverUrl);
+  }, [serverUrl, connect]);
+
+  // Force reconnect WebSocket
+  const forceReconnectWs = useCallback(() => {
+    if (serverUrl) {
+      websocket.forceReconnect();
+    }
+  }, [serverUrl]);
 
   // Handle WebSocket events
   useEffect(() => {
-    const handleConnected = () => setIsConnected(true);
-    const handleDisconnected = () => setIsConnected(false);
-    const handleError = (err) => setError(err.message || 'Connection error');
+    const handleConnected = () => {
+      setIsConnected(true);
+      setIsReconnecting(false);
+      setReconnectInfo(null);
+      setError(null);
+    };
+
+    const handleDisconnected = () => {
+      setIsConnected(false);
+    };
+
+    const handleReconnecting = (info) => {
+      setIsReconnecting(true);
+      setReconnectInfo(info);
+    };
+
+    const handleError = (err) => {
+      const appError = err instanceof AppError ? err : wrapError(err);
+      setError(appError);
+    };
+
+    const handleMaxRetries = (data) => {
+      setIsReconnecting(false);
+      setReconnectInfo(null);
+      if (data?.error) {
+        setError(data.error);
+      }
+    };
 
     websocket.on('connected', handleConnected);
     websocket.on('disconnected', handleDisconnected);
+    websocket.on('reconnecting', handleReconnecting);
     websocket.on('error', handleError);
+    websocket.on('max_retries', handleMaxRetries);
 
     return () => {
       websocket.off('connected', handleConnected);
       websocket.off('disconnected', handleDisconnected);
+      websocket.off('reconnecting', handleReconnecting);
       websocket.off('error', handleError);
+      websocket.off('max_retries', handleMaxRetries);
     };
   }, []);
 
   return {
     isConnected,
     isConnecting,
+    isReconnecting,
+    reconnectInfo,
     serverUrl,
     error,
     connect,
     disconnect,
+    retry,
+    forceReconnectWs,
+    clearError,
     setServerUrl: setServerUrlState,
   };
 }

@@ -3,8 +3,9 @@ import React, { useRef, useCallback } from 'react';
 import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { colors, spacing } from '../constants/theme';
+import { ErrorDisplay } from './ErrorDisplay';
 
-export function ChatView({ snapshot, isLoading, onScroll, onElementClick }) {
+export function ChatView({ snapshot, isLoading, error, onRetry, onScroll, onElementClick }) {
   const webViewRef = useRef(null);
 
   // Build HTML content from snapshot
@@ -142,6 +143,16 @@ export function ChatView({ snapshot, isLoading, onScroll, onElementClick }) {
       console.error('WebView message error:', e);
     }
   }, [onScroll, onElementClick]);
+
+  // Show error if there's an error and no snapshot
+  if (error && !snapshot) {
+    return (
+      <ErrorDisplay
+        error={error}
+        onRetry={onRetry}
+      />
+    );
+  }
 
   if (isLoading && !snapshot) {
     return (
