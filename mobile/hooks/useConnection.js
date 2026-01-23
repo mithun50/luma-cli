@@ -48,8 +48,12 @@ export function useConnection() {
         // Save URL and connect WebSocket
         await storage.setServerUrl(url);
         setServerUrlState(url);
+
+        // Connect WebSocket - don't set isConnected here
+        // Let the WebSocket 'connected' event handler set it
+        // This prevents race condition where UI shows connected before WS is ready
         websocket.connect();
-        setIsConnected(true);
+
         setIsConnecting(false);
         return true;
       }

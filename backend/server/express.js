@@ -23,6 +23,20 @@ export function createExpressApp(options = {}) {
 
     const app = express();
 
+    // CORS middleware - allow all origins for mobile app access
+    app.use((req, res, next) => {
+        res.header('Access-Control-Allow-Origin', '*');
+        res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+        res.header('Access-Control-Allow-Credentials', 'true');
+
+        // Handle preflight requests
+        if (req.method === 'OPTIONS') {
+            return res.sendStatus(200);
+        }
+        next();
+    });
+
     // Core middleware
     app.use(compression());
     app.use(express.json());

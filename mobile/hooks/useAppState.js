@@ -64,14 +64,20 @@ export function useAppState(isConnected) {
   const setMode = useCallback(async (newMode) => {
     if (!isConnected || !api.isConfigured()) return;
 
+    const previousMode = mode; // Store for rollback
     setIsLoading(true);
     setError(null);
+    setModeState(newMode); // Optimistic update
+
     try {
       const result = await api.setMode(newMode);
-      if (result.success || result.alreadySet) {
-        setModeState(newMode);
+      if (!result.success && !result.alreadySet) {
+        // Rollback on failure
+        setModeState(previousMode);
       }
     } catch (err) {
+      // Rollback on error
+      setModeState(previousMode);
       const appError = err instanceof AppError ? err : wrapError(err);
       console.warn('[AppState] Failed to set mode:', appError.message);
       setError(appError);
@@ -79,20 +85,26 @@ export function useAppState(isConnected) {
     } finally {
       setIsLoading(false);
     }
-  }, [isConnected]);
+  }, [isConnected, mode]);
 
   // Set model
   const setModel = useCallback(async (newModel) => {
     if (!isConnected || !api.isConfigured()) return;
 
+    const previousModel = model; // Store for rollback
     setIsLoading(true);
     setError(null);
+    setModelState(newModel); // Optimistic update
+
     try {
       const result = await api.setModel(newModel);
-      if (result.success) {
-        setModelState(newModel);
+      if (!result.success) {
+        // Rollback on failure
+        setModelState(previousModel);
       }
     } catch (err) {
+      // Rollback on error
+      setModelState(previousModel);
       const appError = err instanceof AppError ? err : wrapError(err);
       console.warn('[AppState] Failed to set model:', appError.message);
       setError(appError);
@@ -100,7 +112,7 @@ export function useAppState(isConnected) {
     } finally {
       setIsLoading(false);
     }
-  }, [isConnected]);
+  }, [isConnected, model]);
 
   // Refresh state
   const refresh = useCallback(() => {

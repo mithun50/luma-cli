@@ -19,6 +19,7 @@ export function useSnapshot(isConnected) {
   const [error, setError] = useState(null);
   const pollingRef = useRef(null);
   const consecutiveErrorsRef = useRef(0);
+  const isFetchingRef = useRef(false); // Prevent concurrent fetches
 
   // Clear error
   const clearError = useCallback(() => {
@@ -29,6 +30,10 @@ export function useSnapshot(isConnected) {
   const fetchSnapshot = useCallback(async () => {
     // Don't fetch if not connected or API not configured
     if (!isConnected || !api.isConfigured()) return;
+
+    // Prevent concurrent fetches (debounce)
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
 
     try {
       const data = await api.getSnapshot();
@@ -64,6 +69,8 @@ export function useSnapshot(isConnected) {
 
         setError(appError);
       }
+    } finally {
+      isFetchingRef.current = false;
     }
   }, [isConnected]);
 

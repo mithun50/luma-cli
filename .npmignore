@@ -1,0 +1,28 @@
+# Mobile app (separate Expo project)
+mobile/
+
+# Environment files
+.env
+.env.example
+
+# Documentation (README is included by default)
+CONTRIBUTING.md
+
+# Git
+.git
+.gitignore
+
+# IDE/Editor
+.vscode/
+.idea/
+
+# SSL certificates (generated locally)
+ssl/certs/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db

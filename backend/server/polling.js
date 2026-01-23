@@ -8,6 +8,27 @@ import { discoverCDP, connectCDP, captureSnapshot, checkGenerationState } from '
 import { hashString } from '../utils/hash.js';
 
 /**
+ * Safely broadcast message to all WebSocket clients
+ * @param {WebSocketServer} wss - WebSocket server
+ * @param {Object} message - Message to broadcast
+ */
+function safeBroadcast(wss, message) {
+    if (!wss || !wss.clients) return;
+
+    const messageStr = JSON.stringify(message);
+
+    wss.clients.forEach(client => {
+        try {
+            if (client && client.readyState === WebSocket.OPEN) {
+                client.send(messageStr);
+            }
+        } catch (err) {
+            console.warn('Broadcast error to client:', err.message);
+        }
+    });
+}
+
+/**
  * Initialize CDP connection
  * @param {Object} cdpManager - CDP manager instance
  * @returns {Promise<void>}
@@ -32,9 +53,17 @@ export function startPolling(cdpManager, wss) {
     let lastErrorLog = 0;
     let isConnecting = false;
     let isRunning = true;
+    let isPolling = false; // Lock to prevent concurrent polls
 
     const poll = async () => {
         if (!isRunning) return;
+
+        // Prevent concurrent poll executions
+        if (isPolling) {
+            setTimeout(poll, DEFAULTS.POLL_INTERVAL);
+            return;
+        }
+        isPolling = true;
 
         if (!cdpManager.isConnected()) {
             if (!isConnecting) {
@@ -55,6 +84,7 @@ export function startPolling(cdpManager, wss) {
             } catch (err) {
                 // Not found yet, just wait for next cycle
             }
+            isPolling = false;
             setTimeout(poll, DEFAULTS.RECONNECT_INTERVAL);
             return;
         }
@@ -64,10 +94,16 @@ export function startPolling(cdpManager, wss) {
             if (snapshot && !snapshot.error) {
                 const hash = hashString(snapshot.html);
 
-                // Check generation state
-                const genState = await checkGenerationState(cdpManager.cdp);
+                // Check generation state with error boundary
+                let isGenerating = false;
+                try {
+                    const genState = await checkGenerationState(cdpManager.cdp);
+                    isGenerating = genState.isGenerating;
+                } catch (genErr) {
+                    console.warn('Generation state check failed:', genErr.message);
+                    // Continue with isGenerating = false to avoid stuck state
+                }
                 const wasGenerating = cdpManager.wasGenerating;
-                const isGenerating = genState.isGenerating;
 
                 // Detect generation complete (was generating, now stopped)
                 if (wasGenerating && !isGenerating) {
@@ -75,14 +111,10 @@ export function startPolling(cdpManager, wss) {
                     console.log(`\u2705 Generation complete! (${Math.round(duration / 1000)}s)`);
 
                     // Broadcast generation complete to all clients
-                    wss.clients.forEach(client => {
-                        if (client.readyState === WebSocket.OPEN) {
-                            client.send(JSON.stringify({
-                                type: 'generation_complete',
-                                duration: duration,
-                                timestamp: new Date().toISOString()
-                            }));
-                        }
+                    safeBroadcast(wss, {
+                        type: 'generation_complete',
+                        duration: duration,
+                        timestamp: new Date().toISOString()
                     });
 
                     cdpManager.resetGenerationState();
@@ -93,13 +125,9 @@ export function startPolling(cdpManager, wss) {
                     console.log(`\u23f3 Generation started...`);
 
                     // Broadcast generation started
-                    wss.clients.forEach(client => {
-                        if (client.readyState === WebSocket.OPEN) {
-                            client.send(JSON.stringify({
-                                type: 'generation_started',
-                                timestamp: new Date().toISOString()
-                            }));
-                        }
+                    safeBroadcast(wss, {
+                        type: 'generation_started',
+                        timestamp: new Date().toISOString()
                     });
                 }
 
@@ -111,14 +139,10 @@ export function startPolling(cdpManager, wss) {
                     cdpManager.updateSnapshot(snapshot, hash);
 
                     // Broadcast to all connected clients
-                    wss.clients.forEach(client => {
-                        if (client.readyState === WebSocket.OPEN) {
-                            client.send(JSON.stringify({
-                                type: 'snapshot_update',
-                                isGenerating: isGenerating,
-                                timestamp: new Date().toISOString()
-                            }));
-                        }
+                    safeBroadcast(wss, {
+                        type: 'snapshot_update',
+                        isGenerating: isGenerating,
+                        timestamp: new Date().toISOString()
                     });
 
                     console.log(`\ud83d\udcf8 Snapshot updated (hash: ${hash})`);
@@ -140,6 +164,8 @@ export function startPolling(cdpManager, wss) {
             }
         } catch (err) {
             console.error('Poll error:', err.message);
+        } finally {
+            isPolling = false;
         }
 
         setTimeout(poll, DEFAULTS.POLL_INTERVAL);

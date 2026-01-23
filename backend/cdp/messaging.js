@@ -59,11 +59,17 @@ export async function injectMessage(cdp, text) {
                 contextId: ctx.id
             });
 
-            if (result.result && result.result.value) {
-                return result.result.value;
+            // Safely check for result value
+            if (result && result.result && result.result.value) {
+                const value = result.result.value;
+                if (value.ok) {
+                    return value; // Success - return immediately
+                }
+                // If not ok, continue to try next context
             }
         } catch (e) {
             // Continue to next context
+            console.warn(`Message injection failed in context ${ctx.id}:`, e.message);
         }
     }
 

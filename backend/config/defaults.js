@@ -18,7 +18,7 @@ export const DEFAULTS = {
     // Authentication
     DEFAULT_PASSWORD: 'antigravity',
     AUTH_COOKIE_NAME: 'ag_auth_token',
-    COOKIE_SECRET: 'antigravity_secret_key_1337',
+    COOKIE_SECRET: process.env.LUMA_COOKIE_SECRET || process.env.COOKIE_SECRET || 'antigravity_secret_key_' + Math.random().toString(36).substring(2),
     COOKIE_MAX_AGE: 30 * 24 * 60 * 60 * 1000, // 30 days
 
     // SSL

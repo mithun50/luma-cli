@@ -92,7 +92,13 @@ export function useChats(isConnected) {
       }
 
       if (result.success || result.chat) {
-        await fetchChats(false);
+        // Wrap fetchChats in try-catch to prevent silent failures
+        try {
+          await fetchChats(false);
+        } catch (fetchErr) {
+          console.warn('Failed to refresh chats after create:', fetchErr.message);
+          // Don't fail the create operation if refresh fails
+        }
         setIsLoading(false);
         return { success: true, chat: result.chat };
       }
@@ -140,7 +146,11 @@ export function useChats(isConnected) {
 
       if (result.success) {
         setActiveChat(chatId);
-        await fetchChats(false);
+        try {
+          await fetchChats(false);
+        } catch (fetchErr) {
+          console.warn('Failed to refresh chats after switch:', fetchErr.message);
+        }
       }
 
       setIsLoading(false);
@@ -189,7 +199,11 @@ export function useChats(isConnected) {
         if (chatId === activeChat) {
           setActiveChat(null);
         }
-        await fetchChats(false);
+        try {
+          await fetchChats(false);
+        } catch (fetchErr) {
+          console.warn('Failed to refresh chats after delete:', fetchErr.message);
+        }
       }
 
       setIsLoading(false);
@@ -234,7 +248,11 @@ export function useChats(isConnected) {
       }
 
       if (result.success) {
-        await fetchChats(false);
+        try {
+          await fetchChats(false);
+        } catch (fetchErr) {
+          console.warn('Failed to refresh chats after rename:', fetchErr.message);
+        }
       }
 
       setIsLoading(false);

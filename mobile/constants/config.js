@@ -37,9 +37,9 @@ export const config = {
   wsReconnectDelay: 1000,
   wsMaxReconnectDelay: 30000,
   wsMaxRetries: 15,              // Increased retries
-  wsHeartbeatInterval: 25000,    // Send ping every 25 seconds
-  wsHeartbeatTimeout: 10000,     // Wait 10 seconds for pong
-  wsConnectionTimeout: 10000,    // 10 second connection timeout
+  wsHeartbeatInterval: 30000,    // Send ping every 30 seconds
+  wsHeartbeatTimeout: 15000,     // Wait 15 seconds for pong (more lenient for slow networks)
+  wsConnectionTimeout: 15000,    // 15 second connection timeout
 
   // API request settings
   requestTimeout: 20000,         // 20 second timeout per request

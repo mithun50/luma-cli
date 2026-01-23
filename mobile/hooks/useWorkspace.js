@@ -138,8 +138,12 @@ export function useWorkspace(isConnected) {
       setIsLoading(false);
 
       // Refresh workspace after a short delay (user needs time to select folder)
-      setTimeout(() => {
-        fetchWorkspace(true);
+      setTimeout(async () => {
+        try {
+          await fetchWorkspace(true);
+        } catch (err) {
+          console.warn('Failed to refresh workspace after dialog:', err.message);
+        }
       }, 2000);
 
       return { success: true };
