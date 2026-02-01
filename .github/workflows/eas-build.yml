@@ -51,7 +51,7 @@ jobs:
           EAS_NO_VCS: 1
 
       - name: 📤 Upload AAB artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: luma-android-${{ github.sha }}
           path: mobile/luma-production.aab
